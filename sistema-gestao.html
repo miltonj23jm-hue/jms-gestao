@@ -17,6 +17,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Supabase SDK v2 — cliente JS para backend na nuvem (banco PostgreSQL, Auth, Storage) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- PDF.js para extrair texto de PDFs (usado em Renovações para ler validade) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(typeof pdfjsLib!=='undefined'){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
@@ -1074,14 +1076,6 @@ input.flatpickr-input:not(.flatpickr-alt-input):not([type="date"]) { display: no
         <button class="auth-btn" onclick="doLogin()">Entrar</button>
       </div>
     </div>
-    <p class="text-center text-white text-xs mt-4 opacity-70">Sessão local protegida no seu navegador • Versão 1.0</p>
-    <p class="text-center mt-2 flex flex-col items-center gap-1">
-      <label class="text-white opacity-80 hover:opacity-100 text-xs underline cursor-pointer" title="Restaurar dados a partir de um arquivo JSON exportado anteriormente">
-        🔄 Restaurar backup (.json)
-        <input type="file" accept=".json" hidden onchange="restoreBackupFromFile(event)">
-      </label>
-      <button class="text-white opacity-50 hover:opacity-90 text-xs underline" onclick="resetAllForTest()">🗑️ Apagar todos os dados</button>
-    </p>
   </div>
 </div>
 
@@ -17586,13 +17580,16 @@ function renderConfig(){
     {id:'organizacao', label:'🏢 Organização'},
     {id:'preferencias', label:'⚙️ Preferências'},
     {id:'nf',         label:'📄 Notas Fiscais'},
-    {id:'backup',     label:'💾 Backup'},
-    {id:'integracoes',label:'🔌 Integrações'}
+    {id:'backup',     label:'💾 Backup'}
   ];
-  if(isMaster()) tabs.push({id:'manutencao', label:'🛠️ Manutenção'});
+  // Abas master-only — somente para usuários com role 'master'
+  if(isMaster()){
+    tabs.push({id:'integracoes', label:'🔌 Integrações'});
+    tabs.push({id:'manutencao',  label:'🛠️ Manutenção'});
+  }
 
-  // Se o usuário não é master e está numa aba master-only, redireciona para 'aparencia'
-  if(configTab==='manutencao' && !isMaster()) configTab = 'aparencia';
+  // Se o usuário não é master e tenta acessar aba master-only, redireciona para 'aparencia'
+  if((configTab==='manutencao' || configTab==='integracoes') && !isMaster()) configTab = 'aparencia';
   const tabBtn = t => `<button class="btn ${configTab===t.id?'btn-primary':'btn-secondary'}" onclick="setConfigTab('${t.id}')">${t.label}</button>`;
   let body = '';
   if(configTab==='aparencia'){
@@ -17696,7 +17693,39 @@ function renderConfig(){
         <p class="text-xs text-slate-400 mt-3">Os dados ficam apenas neste navegador. Exporte um backup periodicamente para evitar perda.</p>
       </div>`;
   } else if(configTab==='integracoes'){
+    const cfgSb = getSupabaseConfig();
+    const sbOk = !!(cfgSb.url && cfgSb.anonKey);
     body = `
+      <div class="card mb-3">
+        <div class="flex items-center gap-2 mb-2">
+          <span style="font-size:1.4rem">☁️</span>
+          <span class="font-semibold text-slate-800">Supabase — Backend na Nuvem</span>
+          ${sbOk
+            ? '<span class="badge" style="background:#dcfce7;color:#065f46;padding:.2rem .5rem;border-radius:999px;font-size:.7rem;font-weight:700">✓ Configurado</span>'
+            : '<span class="badge" style="background:#fef3c7;color:#92400e;padding:.2rem .5rem;border-radius:999px;font-size:.7rem;font-weight:700">Não configurado</span>'}
+        </div>
+        <div class="text-xs text-slate-600 mb-3">
+          Conecte seu sistema a um banco de dados online (PostgreSQL). Permite acesso de qualquer lugar, multi-usuários, auth real e backup automático. <b>Setup:</b>
+          <ol class="list-decimal pl-5 mt-1 space-y-0.5">
+            <li>Crie conta grátis em <a href="https://supabase.com" target="_blank" class="underline text-blue-600">supabase.com</a> e um novo projeto</li>
+            <li>No SQL Editor, cole o arquivo <code>supabase-schema.sql</code> (gerado nesta pasta) e clique Run</li>
+            <li>Em Project Settings → API, copie a <b>Project URL</b> e a <b>anon/public key</b></li>
+            <li>Cole abaixo e clique Salvar → Testar conexão</li>
+          </ol>
+        </div>
+        <div class="grid-2 mb-2">
+          <div><span class="label">Project URL</span><input id="sbUrl" class="input" placeholder="https://xxxxx.supabase.co" value="${escapeHtml(cfgSb.url||'https://dxnoyvkvcwjfvttcnsay.supabase.co')}"></div>
+          <div><span class="label">Publishable / Anon Key</span><input id="sbAnonKey" class="input" type="password" placeholder="sb_publishable_... ou eyJhbGc..." value="${escapeHtml(cfgSb.anonKey||'sb_publishable_EmT2OBjaOt0lSjMA9Hixfw_qfBokZjz')}"></div>
+        </div>
+        <div class="flex gap-2 flex-wrap mb-2">
+          <button class="btn btn-primary" onclick="saveSupabaseConfigFromUI()">💾 Salvar</button>
+          <button class="btn btn-secondary" onclick="testarSupabase()" ${sbOk?'':'disabled'}>🔌 Testar conexão</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('sbAnonKey').type=document.getElementById('sbAnonKey').type==='password'?'text':'password'">👁️ Ver chave</button>
+        </div>
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-2 text-xs text-slate-700">
+          <b>Status atual (Fase 1):</b> credenciais armazenadas localmente, ainda sem sincronização. Próxima fase migra dados/login para o Supabase.
+        </div>
+      </div>
       <div class="card">
         <div class="font-semibold text-slate-800 mb-3">Integrações futuras</div>
         <ul class="text-sm text-slate-600 list-disc pl-5 space-y-1">
@@ -21075,6 +21104,187 @@ function getSession(){ try{ return sessionStorage.getItem(SESSION_KEY); }catch(e
 function hasAnyUserWithPassword(){
   return (DB.users||[]).some(u=>u.passwordHash);
 }
+/* ============================================================
+   SUPABASE AUTH (Fase 2) — autenticação no banco em nuvem
+   Substitui o login/cadastro local. Requer Supabase configurado.
+   ============================================================ */
+
+async function loadCurrentUserFromSupabase(){
+  const cli = getSupabaseClient();
+  if(!cli) return null;
+  try {
+    const { data: { user } } = await cli.auth.getUser();
+    if(!user) return null;
+    let profile = null;
+    try {
+      const { data } = await cli.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      profile = data;
+    } catch(e){}
+    currentUser = {
+      id: user.id,
+      email: user.email,
+      name: (profile && profile.name) || user.user_metadata?.name || user.email,
+      username: (profile && profile.username) || user.user_metadata?.username || '',
+      role: (profile && profile.role) || 'master',
+      avatar: profile && profile.avatar_url,
+      _supabase: true
+    };
+    return currentUser;
+  } catch(err){
+    console.warn('loadCurrentUserFromSupabase falhou:', err);
+    return null;
+  }
+}
+
+async function doRegisterSupabase(){
+  const cli = getSupabaseClient();
+  if(!cli){
+    alert('☁️ Supabase não configurado.\n\nÉ necessário configurar primeiro em:\nSistema → Configurações → 🔌 Integrações');
+    return;
+  }
+  const name = (document.getElementById('riName')||{value:''}).value.trim();
+  const username = (document.getElementById('riUsername')||{value:''}).value.trim().toLowerCase();
+  const email = (document.getElementById('riEmail')||{value:''}).value.trim().toLowerCase();
+  const pwd = (document.getElementById('riPwd')||{value:''}).value;
+  const pwd2 = (document.getElementById('riPwd2')||{value:''}).value;
+  if(!name || !email || !pwd){ toast('Preencha nome, email e senha','err'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('E-mail inválido','err'); return; }
+  if(pwd.length < 6){ toast('Senha mínimo 6 caracteres (Supabase exige)','err'); return; }
+  if(pwd !== pwd2){ toast('As senhas não conferem','err'); return; }
+
+  const actionBtn = document.querySelector('#authActionWrap button');
+  if(actionBtn){ actionBtn.disabled = true; actionBtn.textContent = 'Criando conta…'; }
+
+  try {
+    const { data, error } = await cli.auth.signUp({
+      email: email,
+      password: pwd,
+      options: { data: { name: name, username: username } }
+    });
+    if(error){ throw error; }
+
+    // Caso 1: Supabase exige confirmação de email (default)
+    if(data.user && !data.session){
+      if(actionBtn){ actionBtn.disabled = false; actionBtn.textContent = 'Cadastrar'; }
+      alert('✅ Conta criada!\n\nUm email de confirmação foi enviado para:\n'+email+'\n\nClique no link recebido para ativar e depois faça login.\n\n(Se preferir login imediato sem confirmação, desative em Supabase → Authentication → Providers → Email → "Confirm email")');
+      authShowTab('login');
+      return;
+    }
+    // Caso 2: confirmação desativada, sessão já criada
+    if(data.session){
+      await loadCurrentUserFromSupabase();
+      document.getElementById('authScreen').classList.add('hidden');
+      toast('🎉 Bem-vindo, '+name,'success');
+      postAuthInit();
+    }
+  } catch(err){
+    console.error('signUp error:', err);
+    if(actionBtn){ actionBtn.disabled = false; actionBtn.textContent = 'Cadastrar'; }
+    toast('Falha: '+((err && err.message) || err),'err');
+  }
+}
+
+async function doLoginSupabase(){
+  const cli = getSupabaseClient();
+  if(!cli){
+    alert('☁️ Supabase não configurado.\n\nConfigure em:\nSistema → Configurações → 🔌 Integrações');
+    return;
+  }
+  const ident = ((document.getElementById('liIdent')||document.getElementById('liUser')||{value:''}).value).trim().toLowerCase();
+  const pwd = (document.getElementById('liPwd')||{value:''}).value;
+  if(!ident || !pwd){ toast('Preencha email e senha','err'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ident)){
+    toast('Use seu email (o login agora é por email)','err'); return;
+  }
+  const actionBtn = document.querySelector('#authActionWrap button');
+  if(actionBtn){ actionBtn.disabled = true; actionBtn.textContent = 'Entrando…'; }
+  try {
+    const { data, error } = await cli.auth.signInWithPassword({ email: ident, password: pwd });
+    if(error){ throw error; }
+    await loadCurrentUserFromSupabase();
+    document.getElementById('authScreen').classList.add('hidden');
+    toast('Bem-vindo, '+((currentUser && currentUser.name) || ident),'success');
+    postAuthInit();
+  } catch(err){
+    console.error('signIn error:', err);
+    if(actionBtn){ actionBtn.disabled = false; actionBtn.textContent = 'Entrar'; }
+    const msg = (err && err.message) || String(err);
+    if(/Invalid login credentials/i.test(msg)) toast('Email ou senha incorretos','err');
+    else if(/Email not confirmed/i.test(msg)) toast('Email não confirmado — verifique sua caixa','warn');
+    else toast('Falha: '+msg,'err');
+  }
+}
+
+async function forgotPwdSupabase(){
+  const cli = getSupabaseClient();
+  if(!cli){ alert('Supabase não configurado'); return; }
+  const email = prompt('Digite seu email cadastrado para receber o link de redefinição de senha:');
+  if(!email || !email.trim()) return;
+  try {
+    const { error } = await cli.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: window.location.href
+    });
+    if(error) throw error;
+    alert('✅ Email enviado para:\n'+email+'\n\nClique no link recebido para redefinir sua senha.\n\n(Pode demorar alguns minutos — confira também a pasta Spam)');
+  } catch(err){
+    alert('Erro: '+((err && err.message) || err));
+  }
+}
+
+async function logoutSupabase(){
+  if(!confirm('Sair do sistema?')) return;
+  const cli = getSupabaseClient();
+  if(cli){ try { await cli.auth.signOut(); } catch(e){} }
+  currentUser = null;
+  if(typeof clearSession==='function') clearSession();
+  if(typeof clearLastUser==='function') clearLastUser();
+  location.reload();
+}
+
+/* Sobrescreve funções globais para usar Supabase quando configurado */
+(function _ativarSupabaseAuth(){
+  // Substitui após DOMContentLoaded para garantir que originais existem
+  function ativar(){
+    if(!isSupabaseConfigured()) return;
+    window.doRegister = doRegisterSupabase;
+    window.doLogin    = doLoginSupabase;
+    window.doQuickLogin = doLoginSupabase; // login rápido vira login normal
+    window.forgotPwd  = forgotPwdSupabase;
+    window.logout     = logoutSupabase;
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', ativar);
+  } else { ativar(); }
+})();
+
+/* Substitui o init() para checar sessão Supabase primeiro */
+(function _patchInitParaSupabase(){
+  const origInit = window.init;
+  window.init = async function(){
+    if(isSupabaseConfigured()){
+      const cli = getSupabaseClient();
+      if(cli){
+        try {
+          const { data: { session } } = await cli.auth.getSession();
+          if(session){
+            await loadCurrentUserFromSupabase();
+            if(currentUser){
+              document.getElementById('authScreen').classList.add('hidden');
+              if(typeof postAuthInit === 'function') postAuthInit();
+              return;
+            }
+          }
+        } catch(e){ console.warn('Sessão Supabase falhou:', e); }
+      }
+      // Sem sessão → mostra login
+      if(typeof showAuth === 'function') showAuth();
+      return;
+    }
+    // Sem Supabase configurado → comportamento original
+    if(typeof origInit === 'function') origInit();
+  };
+})();
+
 function authState(){
   const sid = getSession();
   if(sid){
@@ -21656,6 +21866,82 @@ async function doLogin(){
   if(typeof _auditLog==='function') _auditLog('login', u.name, 'Login no sistema');
   toast('Bem-vindo, '+u.name);
   postAuthInit();
+}
+
+/* ============================================================
+   SUPABASE — Backend na nuvem (Fase 1: setup e teste de conexão)
+   Documentação: https://supabase.com/docs
+   ============================================================ */
+const SUPABASE_KEY = 'jms_supabase_config';
+let _supabaseClient = null;
+
+function getSupabaseConfig(){
+  try { return JSON.parse(localStorage.getItem(SUPABASE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveSupabaseConfig(cfg){
+  try { localStorage.setItem(SUPABASE_KEY, JSON.stringify(cfg||{})); return true; }
+  catch(e) { return false; }
+}
+function isSupabaseConfigured(){
+  const c = getSupabaseConfig();
+  return !!(c.url && c.anonKey);
+}
+
+/* Inicializa o cliente Supabase (singleton) */
+function getSupabaseClient(){
+  if(_supabaseClient) return _supabaseClient;
+  const cfg = getSupabaseConfig();
+  if(!cfg.url || !cfg.anonKey) return null;
+  if(typeof window.supabase === 'undefined') return null;
+  try {
+    _supabaseClient = window.supabase.createClient(cfg.url, cfg.anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+    return _supabaseClient;
+  } catch(e){
+    console.error('Falha ao criar cliente Supabase:', e);
+    return null;
+  }
+}
+
+function saveSupabaseConfigFromUI(){
+  const url = (document.getElementById('sbUrl')||{value:''}).value.trim();
+  const key = (document.getElementById('sbAnonKey')||{value:''}).value.trim();
+  if(url && !/^https?:\/\/.+\.supabase\.co\/?$/.test(url)){
+    if(typeof toast==='function') toast('URL parece inválida (deve ser https://xxxxx.supabase.co)','warn');
+  }
+  saveSupabaseConfig({ url: url.replace(/\/$/,''), anonKey: key });
+  _supabaseClient = null; // força recriar
+  if(typeof toast==='function') toast('Configuração Supabase salva','success');
+  if(typeof navigate==='function') navigate('config');
+}
+
+async function testarSupabase(){
+  const cli = getSupabaseClient();
+  if(!cli){ alert('Cliente não inicializado. Salve a configuração primeiro e recarregue (F5).'); return; }
+  if(typeof toast==='function') toast('Testando conexão com Supabase…');
+  try {
+    // Tenta uma query simples na tabela companies (deve existir se o SQL foi rodado)
+    const { data, error } = await cli.from('companies').select('id').limit(1);
+    if(error){
+      // 42P01 = tabela não existe
+      if(String(error.code||'') === '42P01' || /relation .* does not exist/i.test(error.message||'')){
+        alert('✅ Conectou ao Supabase, mas a tabela "companies" NÃO foi criada.\n\nVocê precisa rodar o arquivo supabase-schema.sql no SQL Editor do Supabase.');
+        return;
+      }
+      throw error;
+    }
+    // Verifica sessão de auth
+    const { data: { user } } = await cli.auth.getUser();
+    const userInfo = user ? ('\nUsuário autenticado: '+user.email) : '\n(Nenhum usuário autenticado ainda — normal na Fase 1)';
+    alert('✅ Conexão Supabase OK!\n\nProjeto respondendo, tabela "companies" existe.'+userInfo+'\n\nPróxima fase: migrar autenticação e dados.');
+    if(typeof toast==='function') toast('✓ Supabase conectado','success');
+  } catch(err){
+    console.error('Supabase test error:', err);
+    const msg = (err && (err.message || err.error_description)) || JSON.stringify(err);
+    alert('❌ Falha:\n\n'+msg+'\n\nDicas:\n• Confira URL e anon key (Project Settings → API)\n• Rode o supabase-schema.sql no SQL Editor\n• Verifique se o projeto está ativo (não pausado por inatividade)');
+  }
 }
 
 async function doRegister(){
@@ -30779,3 +31065,4 @@ function renderHistoricoLicitRoute(){
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
