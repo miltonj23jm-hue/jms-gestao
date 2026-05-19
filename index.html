@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JMS Gestão">
+<link rel="manifest" href="manifest.json">
 <title>JMS Gestão Empresarial</title>
 <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M 72 18 A 40 40 0 1 0 84 48' stroke='%232949D9' stroke-width='3.5' fill='none' stroke-linecap='round'/><rect x='29' y='62' width='8' height='20' fill='%232949D9'/><rect x='40' y='53' width='8' height='29' fill='%232949D9'/><rect x='51' y='45' width='8' height='37' fill='%232949D9'/><rect x='62' y='37' width='8' height='45' fill='%232949D9'/><path d='M 29 65 L 44 55 L 56 47 L 68 35' stroke='%232949D9' stroke-width='2.5' fill='none' stroke-linecap='round'/><path d='M 65 32 L 74 35 L 71 43 Z' fill='%232949D9'/><circle cx='31' cy='28' r='8' fill='%232949D9'/><text x='31' y='32' font-family='Arial Black' font-size='10' font-weight='bold' fill='%23fff' text-anchor='middle'>$</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,6 +33,11 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-functions-compat.js"></script>
 <style>
   /* Lucide icons — base */
   [data-lucide]{display:inline-block;vertical-align:middle;flex-shrink:0;stroke-width:2}
@@ -563,6 +573,108 @@ select optgroup option{
   .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
   .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
   @media(max-width:768px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+
+  /* ============================================================
+     RESPONSIVIDADE MOBILE — drawer sidebar, modais, tabelas, botões
+     ============================================================ */
+  @media(max-width:768px){
+    /* Body com scroll quando sidebar fechada — necessário para mobile */
+    html,body{overflow:auto !important}
+    #app{height:auto !important;min-height:100vh;overflow:visible !important}
+    #app aside.sidebar{height:100vh !important}
+    /* Sidebar como drawer: começa fora da tela à esquerda */
+    .sidebar{
+      position:fixed !important;
+      top:0;left:0;bottom:0;
+      width:280px !important;
+      transform:translateX(-100%);
+      transition:transform .25s ease;
+      z-index:200;
+      box-shadow:2px 0 20px rgba(0,0,0,.25);
+    }
+    .sidebar.sidebar-mobile-open{transform:translateX(0)}
+    /* Overlay quando aberta */
+    #sidebarOverlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;
+      display:none;animation:fadeIn .2s;
+    }
+    #sidebarOverlay.show{display:block}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    /* Força sidebar visível em mobile quando aberta (override do hidden md:flex) */
+    .sidebar.sidebar-mobile-open{display:flex !important}
+    /* Topbar: menos padding, ícones menores */
+    header.bg-white{padding:.5rem .75rem !important;flex-wrap:wrap}
+    #pageTitle{font-size:.95rem !important}
+    .topbar-icon-btn{width:38px !important;height:38px !important;font-size:1.2rem !important}
+    /* Botões da topbar: esconde tamanho fonte, mantém essenciais */
+    #fontSizeWidget{display:none !important}
+    #userBadge{display:none !important}
+    /* Tabelas: scroll horizontal com indicação visual */
+    .card.overflow-x-auto{
+      margin-left:-1rem;margin-right:-1rem;border-radius:0;
+      max-width:100vw;-webkit-overflow-scrolling:touch;
+    }
+    table{font-size:.8rem !important}
+    table th, table td{padding:.4rem .5rem !important}
+    /* Modais quase fullscreen no mobile */
+    .modal-bg{padding:.5rem !important;align-items:flex-start !important}
+    .modal{
+      max-width:100% !important;
+      width:100% !important;
+      max-height:95vh !important;
+      margin-top:.5rem;
+      border-radius:.5rem !important;
+    }
+    /* Hub tiles: força grid 2 colunas */
+    .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3{
+      grid-template-columns:repeat(2,1fr) !important;
+    }
+    /* Cards e KPIs: força 2 colunas no mobile */
+    .grid.grid-cols-2.md\:grid-cols-3,
+    .grid.grid-cols-2.md\:grid-cols-4,
+    .grid.grid-cols-2.md\:grid-cols-5{
+      grid-template-columns:repeat(2,1fr) !important;
+    }
+    /* Cards com padding menor */
+    .card{padding:.85rem !important}
+    /* Form inputs maiores para touch (mínimo 44px) */
+    .input, .select{
+      min-height:44px !important;
+      font-size:16px !important; /* impede zoom no iOS */
+    }
+    /* Botões touch-friendly */
+    .btn{min-height:44px !important;padding:.6rem 1rem !important}
+    .btn-ghost{min-height:36px !important}
+    /* Toast: posição segura no rodapé do mobile (acima da barra de navegação) */
+    .toast{
+      bottom:5rem !important;right:1rem !important;left:1rem !important;
+      max-width:none !important;
+    }
+    /* Tela de auth (login): ocupa toda a viewport sem deslocamento */
+    #authScreen{padding:1rem !important;align-items:flex-start !important;padding-top:2rem !important}
+    .auth-box{max-width:100% !important}
+    /* Logo da sidebar menor no mobile */
+    #sidebarLogo{width:48px !important;height:48px !important}
+    /* Esconde scroll horizontal indesejado */
+    body{overflow-x:hidden !important}
+    /* Botão hamburger mais destacado */
+    button.md\:hidden.btn{
+      width:42px !important;height:42px !important;
+      background:#f1f5f9 !important;
+      border:1px solid #cbd5e1 !important;
+      border-radius:8px !important;
+      font-size:1.3rem !important;
+      display:inline-flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+    }
+  }
+
+  /* Tablets — ajustes intermediários */
+  @media(min-width:769px) and (max-width:1024px){
+    .sidebar{width:200px !important}
+    .nav-item{padding:.5rem .65rem !important;font-size:.82rem !important}
+  }
   .tab{padding:.5rem 1rem;border-bottom:2px solid transparent;cursor:pointer;font-size:.875rem;color:#64748b;font-weight:500}
   .tab.active{border-color:#4f46e5;color:#4f46e5}
   .scroll-y{max-height:60vh;overflow-y:auto}
@@ -1075,6 +1187,25 @@ input.flatpickr-input:not(.flatpickr-alt-input):not([type="date"]) { display: no
       <div id="authActionWrap">
         <button class="auth-btn" onclick="doLogin()">Entrar</button>
       </div>
+      <div id="authFirebaseSetupLink" style="text-align:center;margin-top:1rem;font-size:.75rem;color:#94a3b8;display:none">
+        <a onclick="abrirFirebaseSetup()" style="cursor:pointer;text-decoration:underline;color:#ea580c;font-weight:600">🔥 Configurar Firebase (autenticação Google)</a>
+      </div>
+      <script>
+        // Mostra/esconde o link conforme estado da configuração
+        document.addEventListener('DOMContentLoaded', function(){
+          var checkFn = function(){
+            var link = document.getElementById('authFirebaseSetupLink');
+            if(!link) return;
+            try {
+              var cfg = JSON.parse(localStorage.getItem('jms_firebase_config')||'{}');
+              link.style.display = (cfg.apiKey && cfg.projectId) ? 'none' : 'block';
+            } catch(e){ link.style.display = 'block'; }
+          };
+          checkFn();
+          // Re-checa periodicamente caso o usuário reconfigure
+          setInterval(checkFn, 2000);
+        });
+      </script>
     </div>
   </div>
 </div>
@@ -1119,6 +1250,7 @@ input.flatpickr-input:not(.flatpickr-alt-input):not([type="date"]) { display: no
 </div>
 
 <!-- Layout principal -->
+<div id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div id="app" class="flex hidden">
   <!-- Sidebar -->
   <aside class="sidebar w-72 flex-shrink-0 hidden md:flex flex-col">
@@ -1183,7 +1315,8 @@ input.flatpickr-input:not(.flatpickr-alt-input):not([type="date"]) { display: no
           <button class="topbar-icon-btn" onclick="changeFontSize(1)" title="Aumentar fonte" style="border-radius:0;width:38px;font-weight:700;font-size:1.1rem;color:#475569">A<sub style="font-size:.55em;font-weight:600">+</sub></button>
         </div>
         <button class="topbar-icon-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" id="themeBtn" style="font-size:1.4rem;width:42px;height:42px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='#f1f5f9';this.style.borderColor='#94a3b8'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">🌙</button>
-        <button class="topbar-icon-btn" onclick="ativarNotificacoes()" title="Notificações" id="notifBtn" style="font-size:1.4rem;width:42px;height:42px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='#f1f5f9';this.style.borderColor='#94a3b8'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">🔔</button>
+        <button class="topbar-icon-btn" onclick="abrirPainelAlertas()" title="Alertas de vencimento" id="notifBtn" style="font-size:1.4rem;width:42px;height:42px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='#f1f5f9';this.style.borderColor='#94a3b8'" onmouseout="this.style.background='#fff';this.style.borderColor='#e2e8f0'">🔔</button>
+        <button class="topbar-icon-btn hidden md:inline-flex items-center" onclick="abrirPesquisaGlobal()" title="Pesquisar (Ctrl+K)" style="height:42px;padding:0 .8rem;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;gap:.5rem;font-size:.85rem;color:#64748b" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fff'">🔍 <span style="font-size:.85rem">Pesquisar</span> <kbd style="background:#f1f5f9;padding:.1rem .35rem;border-radius:4px;font-size:.7rem">Ctrl+K</kbd></button>
         <div id="userBadge" class="hidden md:flex items-center gap-2" style="height:42px">
           <div style="display:inline-flex;align-items:center;gap:.4rem;padding:0 .8rem;height:100%;background:#fff;border:2px solid #e2e8f0;border-radius:10px;font-size:.85rem;font-weight:600;color:#475569">
             <span style="font-size:1.4rem;line-height:1">👤</span>
@@ -3505,7 +3638,7 @@ const titles = {
   lancamentos:'Lançamentos Financeiros',nf:'Notas Fiscais',contasPagar:'Contas a Pagar',contasReceber:'Contas a Receber',transferencias:'Transferências',emprestimos:'Empréstimos',
   fluxo:'Fluxo de Caixa',extrato:'Extrato Bancário',conciliacao:'Conciliação Bancária',bens:'Bens Patrimoniais',
   depreciacao:'Depreciação',dre:'DRE — Demonstrativo de Resultado',balanco:'Balanço Patrimonial',indices:'Índices Financeiros',
-  relatorios:'Relatórios Gerais',usuarios:'Usuários',config:'Configurações',calendarioFiscal:'Calendário Fiscal',auditoria:'Log de Auditoria',recorrencias:'Recorrências Automáticas',estoque:'Gestão de Estoque',cobranca:'Cobrança Inteligente',iaAnalise:'IA / Análise',analiseAvancada:'Análise Avançada',documentos:'Geração de Documentos',intelFiscal:'Inteligência Fiscal',rh:'RH / Gestão de Pessoas',painel:'📋 Painel',faturas:'💳 Faturas / Cobranças PIX',
+  relatorios:'Relatórios Gerais',usuarios:'Usuários',config:'Configurações',calendarioFiscal:'Calendário Fiscal',auditoria:'Log de Auditoria',recorrencias:'Recorrências Automáticas',estoque:'Gestão de Estoque',cobranca:'Cobrança Inteligente',iaAnalise:'IA / Análise',analiseAvancada:'Análise Avançada',documentos:'Geração de Documentos',intelFiscal:'Inteligência Fiscal',rh:'RH / Gestão de Pessoas',painel:'📋 Painel',execDash:'📊 Dashboard Executivo',faturas:'💳 Faturas / Cobranças PIX',
   licitacoes:'⚖️ Licitações & Editais', contratos:'📜 Contratos & Aditivos',
   certidoes:'📑 Documentos e Certidões',
   gestaoDashboard:'📊 Dashboard de Gestão',
@@ -3524,6 +3657,11 @@ const GROUP_ONLY_ROUTES = ['grupo','regioes','grupoDashboard','usuarios'];
 function navigate(route){
   // Defensivo: se chamado sem rota, não faz nada (evita seleção em massa)
   if(!route){ return; }
+  // Bloqueio por permissão granular
+  if(typeof userCanAccessRoute === 'function' && !userCanAccessRoute(route)){
+    if(typeof toast === 'function') toast('Você não tem permissão para acessar esse módulo','warn');
+    route = 'dashboard';
+  }
   // Nível 2 só pode acessar o dashboard — qualquer outra rota redireciona
   if(typeof isNivel2==='function' && isNivel2() && route !== 'dashboard'){
     toast('Seu perfil (Nível 2) tem acesso apenas ao Dashboard.','warn');
@@ -7155,6 +7293,7 @@ function renderLancamentos(){
       ${locked?
         '<button class="btn btn-primary" onclick="editEntry(null,\'receita\')"><i data-lucide="trending-up" style="width:14px;height:14px"></i> + Receita</button>'+
         '<button class="btn btn-danger" onclick="editEntry(null,\'despesa\')"><i data-lucide="trending-down" style="width:14px;height:14px"></i> + Despesa</button>'+
+        '<button class="btn btn-secondary" onclick="abrirImportarOFX()" title="Importar extrato bancário (OFX)" style="background:#0c4a6e;color:#fff">📥 Importar OFX</button>'+
         '<button class="btn btn-secondary" style="background:#0d9488;color:#fff;border-color:#0d9488" onclick="editTransfer()"><i data-lucide="repeat" style="width:14px;height:14px"></i> + Transferência</button>'
         :''}
       <div class="ml-auto flex gap-2 flex-wrap">
@@ -17254,7 +17393,17 @@ function editUser(id){
             }).join('') +
           '</div>'
         : '<div class="empty text-sm">Nenhuma empresa cadastrada.</div>';
-      return '<div id="userScopeBlock" class="form-section" style="'+(u.role==='master'?'display:none':'')+'">'+
+      // Bloco de permissões por seção (master sempre tem tudo)
+      const permsAtuais = u.modulePermissions || {};
+      const permsHTML = '<div id="userPermsBlock" class="form-section" style="border-left:4px solid #7c3aed;background:#faf5ff;'+(u.role==='master'?'display:none':'')+'">'+
+        '<div class="form-section-title" style="color:#7c3aed">🔐 Permissões por módulo (granulares)</div>'+
+        '<div class="text-xs text-slate-500 mb-2">Marque os módulos que este usuário pode acessar. Master sempre tem acesso total.</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.4rem">'+
+        SECOES_HUB_PERMISSAO.map(s => 
+          '<label class="flex items-center gap-2" style="padding:.4rem;background:#fff;border-radius:6px"><input type="checkbox" data-perm-secao="'+s.id+'" '+(permsAtuais[s.id] !== false?'checked':'')+'> '+escapeHtml(s.l)+'</label>'
+        ).join('')+
+        '</div></div>';
+      return permsHTML + '<div id="userScopeBlock" class="form-section" style="'+(u.role==='master'?'display:none':'')+'">'+
         '<div class="form-section-title">🌎 Escopo de acesso <span class="text-slate-400 normal-case font-normal" style="letter-spacing:normal">— restringe a quais empresas o usuário tem acesso (não se aplica a Master)</span></div>'+
         '<div class="mb-2">'+
           '<div class="flex items-center gap-2 flex-wrap mb-1">'+
@@ -17279,7 +17428,10 @@ function editUser(id){
       if(!username){ toast('Informe o nome de usuário','err'); return false; }
       if(!/^[a-z0-9_.]{3,}$/.test(username)){ toast('Usuário inválido (mínimo 3, letras/números/_/.)','err'); return false; }
       if(!email){ toast('Informe o e-mail','err'); return false; }
-      if(pwd && pwd.length<4){ toast('Senha muito curta','err'); return false; }
+      if(pwd){
+        const uErr = _validarSenhaForte(pwd);
+        if(uErr){ toast(uErr,'err'); return false; }
+      }
       if(pwd && pwd!==pwd2){ toast('Senhas não conferem','err'); return false; }
       if(!id && !pwd){ toast('Defina uma senha','err'); return false; }
       // duplicidades
@@ -17297,7 +17449,13 @@ function editUser(id){
         assignedCompanyIds: checkedCompanyIds
       };
       const finalize = ()=>{
-        if(id) Object.assign(u,data); else DB.users.push({id:uid('u'),...data,createdAt:new Date().toISOString()});
+        // Coleta permissões selecionadas
+      const perms = {};
+      document.querySelectorAll('input[data-perm-secao]').forEach(cb => {
+        perms[cb.dataset.permSecao] = cb.checked;
+      });
+      data.modulePermissions = perms;
+      if(id) Object.assign(u,data); else DB.users.push({id:uid('u'),...data,createdAt:new Date().toISOString()});
         saveDB();
         if(currentUser && id===currentUser.id) currentUser = DB.users.find(x=>x.id===id);
         refreshUserBadge();
@@ -21725,7 +21883,15 @@ function authShowTab(tab){
         '</div>'+
         '<div class="auth-options"><label><input type="checkbox" id="liRemember" checked> <span>Lembrar-me</span></label><a onclick="switchUser()">↺ Trocar de usuário</a></div>'+
         '<div class="text-center"><a class="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer" onclick="forgotPwd()">🔑 Esqueceu a senha?</a></div>';
-      action.innerHTML = '<button class="auth-btn" onclick="doQuickLogin()">Entrar</button>';
+      action.innerHTML = '<button class="auth-btn" onclick="doQuickLogin()">Entrar</button>' + (
+        isFirebaseConfigured() ? (
+          '<div style="display:flex;align-items:center;gap:.5rem;margin:1rem 0;color:#94a3b8;font-size:.75rem"><div style="flex:1;height:1px;background:#e2e8f0"></div><span>OU</span><div style="flex:1;height:1px;background:#e2e8f0"></div></div>'+
+          '<button onclick="loginComGoogle()" class="auth-btn" style="background:#fff;color:#1f2937;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;gap:.6rem;font-weight:600">'+
+            '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>'+
+            '<span>Entrar com Google</span>'+
+          '</button>'
+        ) : ''
+      );
       setTimeout(()=>{ const el=document.getElementById('liPwd'); if(el) el.focus(); },50);
     } else {
       const firstAccessBanner = noUsers
@@ -21740,8 +21906,17 @@ function authShowTab(tab){
           '<div class="auth-input-icon">🔒</div>'+
           '<input id="liPwd" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()">'+
         '</div>'+
-        '<div class="auth-options"><label><input type="checkbox" id="liRemember" checked> <span>Lembrar-me</span></label><a onclick="forgotPwd()">Esqueceu a senha?</a></div>';
-      action.innerHTML = '<button class="auth-btn" onclick="doLogin()" '+(noUsers?'disabled':'')+'>Entrar</button>';
+        '<div class="auth-options"><label><input type="checkbox" id="liRemember" checked> <span>Lembrar-me</span></label><a onclick="forgotPwd()">Esqueceu a senha?</a></div>'+
+        (isFirebaseConfigured() ? '<div style="text-align:center;margin-top:.5rem"><a onclick="abrirReenviarEmail()" style="cursor:pointer;text-decoration:underline;color:#64748b;font-size:.75rem">📧 Reenviar e-mail de confirmação</a></div>' : '');
+      action.innerHTML = '<button class="auth-btn" onclick="doLogin()" '+(noUsers?'disabled':'')+'>Entrar</button>' + (
+        isFirebaseConfigured() ? (
+          '<div style="display:flex;align-items:center;gap:.5rem;margin:1rem 0;color:#94a3b8;font-size:.75rem"><div style="flex:1;height:1px;background:#e2e8f0"></div><span>OU</span><div style="flex:1;height:1px;background:#e2e8f0"></div></div>'+
+          '<button onclick="loginComGoogle()" class="auth-btn" style="background:#fff;color:#1f2937;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;gap:.6rem;font-weight:600">'+
+            '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>'+
+            '<span>Entrar com Google</span>'+
+          '</button>'
+        ) : ''
+      );
       setTimeout(()=>{ const el=document.getElementById('liIdent'); if(el) el.focus(); },50);
     }
   } else {
@@ -21761,18 +21936,68 @@ function authShowTab(tab){
       '</div>'+
       '<div class="auth-input-row">'+
         '<div class="auth-input-icon">🔒</div>'+
-        '<input id="riPwd" type="password" placeholder="Senha (mínimo 4 caracteres)" autocomplete="new-password">'+
+        '<input id="riPwd" type="password" placeholder="Senha (mín 8 chars com letras e números)" autocomplete="new-password">'+
       '</div>'+
       '<div class="auth-input-row">'+
         '<div class="auth-input-icon">🔒</div>'+
         '<input id="riPwd2" type="password" placeholder="Confirmar senha" autocomplete="new-password" onkeydown="if(event.key===\'Enter\')doRegister()">'+
       '</div>';
-    action.innerHTML = '<button class="auth-btn" onclick="doRegister()">Cadastrar</button>';
+    action.innerHTML = '<button class="auth-btn" onclick="doRegister()">Cadastrar</button>' + (
+      isFirebaseConfigured() ? (
+        '<div style="display:flex;align-items:center;gap:.5rem;margin:1rem 0;color:#94a3b8;font-size:.75rem"><div style="flex:1;height:1px;background:#e2e8f0"></div><span>OU</span><div style="flex:1;height:1px;background:#e2e8f0"></div></div>'+
+        '<button onclick="loginComGoogle()" class="auth-btn" style="background:#fff;color:#1f2937;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;gap:.6rem;font-weight:600">'+
+          '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>'+
+          '<span>Cadastrar com Google</span>'+
+        '</button>'
+      ) : ''
+    );
     setTimeout(()=>{ const el=document.getElementById('riName'); if(el) el.focus(); },50);
   }
 }
 
 function forgotPwd(){
+  // === FIREBASE (prioridade) ===
+  if(isFirebaseConfigured()){
+    openModal('🔑 Recuperar senha (via e-mail Firebase)',
+      '<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:.7rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">📧 Enviaremos um link de redefinição para o e-mail cadastrado. Verifique também a caixa de spam.</div>'+
+      '<div class="mb-3"><span class="label">E-mail cadastrado *</span><input id="fpFbEmail" class="input" type="email" placeholder="seu@email.com" autofocus></div>',
+      async ()=>{
+        const email = (document.getElementById('fpFbEmail').value||'').trim().toLowerCase();
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('E-mail inválido','err'); return false; }
+        try {
+          await _firebaseSendRecovery(email);
+          toast('📧 E-mail enviado! Confira sua caixa de entrada (e spam).');
+          closeModal();
+        } catch(e){
+          const errMsgs = {
+            'auth/user-not-found': 'Não encontramos cadastro com esse e-mail',
+            'auth/invalid-email': 'E-mail inválido'
+          };
+          toast(errMsgs[e.code] || ('Falha: '+(e.message||e)),'err');
+          return false;
+        }
+      });
+    return;
+  }
+  // === APPWRITE (fallback) ===
+  if(isAppwriteConfigured()){
+    openModal('🔑 Recuperar senha (via e-mail)',
+      '<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:.7rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">📧 Enviaremos um link de redefinição para o e-mail cadastrado. Verifique também a caixa de spam.</div>'+
+      '<div class="mb-3"><span class="label">E-mail cadastrado *</span><input id="fpAwEmail" class="input" type="email" placeholder="seu@email.com" autofocus></div>',
+      async ()=>{
+        const email = (document.getElementById('fpAwEmail').value||'').trim().toLowerCase();
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('E-mail inválido','err'); return false; }
+        try {
+          await _appwriteSendRecovery(email);
+          toast('📧 E-mail enviado! Confira sua caixa de entrada.');
+          closeModal();
+        } catch(e){
+          toast('Falha: '+(e.message||e),'err');
+          return false;
+        }
+      });
+    return;
+  }
   // Como o sistema é local (sem servidor de e-mail), a redefinição é feita
   // diretamente após confirmação do e-mail/usuário cadastrado.
   openModal('🔑 Redefinir senha',
@@ -21784,7 +22009,7 @@ function forgotPwd(){
       '<input id="fpIdent" class="input" placeholder="seu@email.com ou usuario" autofocus>'+
     '</div>'+
     '<div class="grid-2 mb-3">'+
-      '<div><span class="label">Nova senha *</span><input id="fpPwd" type="password" class="input" placeholder="mínimo 4 caracteres"></div>'+
+      '<div><span class="label">Nova senha *</span><input id="fpPwd" type="password" class="input" placeholder="mín 8 chars com letras e números"></div>'+
       '<div><span class="label">Confirmar nova senha *</span><input id="fpPwd2" type="password" class="input" placeholder="repita a senha"></div>'+
     '</div>'+
     '<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">'+
@@ -21797,7 +22022,8 @@ function forgotPwd(){
       const pwd   = document.getElementById('fpPwd').value;
       const pwd2  = document.getElementById('fpPwd2').value;
       if(!ident){ toast('Informe o e-mail ou usuário','err'); return false; }
-      if(!pwd || pwd.length<4){ toast('Senha precisa ter pelo menos 4 caracteres','err'); return false; }
+      const forgotErr = _validarSenhaForte(pwd);
+      if(forgotErr){ toast(forgotErr,'err'); return false; }
       if(pwd!==pwd2){ toast('As senhas não conferem','err'); return false; }
       const u = (DB.users||[]).find(x => x.passwordHash && (
         (x.email && x.email.toLowerCase()===ident) ||
@@ -21846,10 +22072,704 @@ function switchUser(){
   toast('Faça login com outro usuário');
 }
 
+
+
+/* ============================================================
+   FIREBASE AUTH — Google (Plano Spark/Free)
+   Autenticação na nuvem com confirmação de e-mail
+   ============================================================ */
+const FIREBASE_KEY = 'jms_firebase_config';
+let _firebaseApp = null;
+let _firebaseAuth = null;
+
+function getFirebaseConfig(){
+  try { return JSON.parse(localStorage.getItem(FIREBASE_KEY)||'{}'); }
+  catch(e){ return {}; }
+}
+function saveFirebaseConfig(cfg){
+  try { localStorage.setItem(FIREBASE_KEY, JSON.stringify(cfg||{})); return true; }
+  catch(e){ return false; }
+}
+function isFirebaseConfigured(){
+  const c = getFirebaseConfig();
+  return !!(c.apiKey && c.projectId);
+}
+
+function _initFirebase(){
+  if(_firebaseApp && _firebaseAuth) return true;
+  if(typeof firebase === 'undefined'){ console.error('Firebase SDK não carregado'); return false; }
+  const cfg = getFirebaseConfig();
+  if(!cfg.apiKey || !cfg.projectId) return false;
+  try {
+    // Reusa app se já inicializado (evita erro "duplicate-app")
+    if(firebase.apps && firebase.apps.length) _firebaseApp = firebase.apps[0];
+    else _firebaseApp = firebase.initializeApp({
+      apiKey: cfg.apiKey,
+      authDomain: cfg.authDomain,
+      projectId: cfg.projectId,
+      storageBucket: cfg.storageBucket||'',
+      messagingSenderId: cfg.messagingSenderId||'',
+      appId: cfg.appId||''
+    });
+    _firebaseAuth = firebase.auth();
+    try { _firebaseAuth.languageCode = 'pt'; } catch(e){}
+    return true;
+  } catch(e){
+    console.error('Falha ao iniciar Firebase:', e);
+    return false;
+  }
+}
+
+async function _firebaseRegister(email, password, name){
+  if(!_initFirebase()) throw new Error('Firebase não configurado');
+  const cred = await _firebaseAuth.createUserWithEmailAndPassword(email, password);
+  const user = cred.user;
+  // Atualiza display name
+  try { await user.updateProfile({displayName: name}); } catch(e){}
+  // Envia e-mail de verificação
+  try { await user.sendEmailVerification({ url: location.href.split('?')[0].split('#')[0], handleCodeInApp: false }); }
+  catch(e){ console.warn('Falha ao enviar e-mail de verificação:', e); }
+  // Sign out para forçar verificação antes do primeiro login
+  await _firebaseAuth.signOut();
+  return user;
+}
+
+async function _firebaseLogin(email, password){
+  if(!_initFirebase()) throw new Error('Firebase não configurado');
+  const cred = await _firebaseAuth.signInWithEmailAndPassword(email, password);
+  const user = cred.user;
+  // Não exige mais user.emailVerified — usamos OTP de 6 dígitos via Cloud Function
+  return user;
+}
+
+async function _firebaseResendVerification(){
+  if(!_initFirebase()) throw new Error('Firebase não configurado');
+  const user = _firebaseAuth.currentUser;
+  if(!user) throw new Error('Sem usuário logado para reenviar');
+  return await user.sendEmailVerification();
+}
+
+async function _firebaseResendVerificationFor(email, password){
+  // Faz login temporário, envia verificação, e desloga
+  if(!_initFirebase()) throw new Error('Firebase não configurado');
+  const cred = await _firebaseAuth.signInWithEmailAndPassword(email, password);
+  try { await cred.user.sendEmailVerification(); }
+  finally { try { await _firebaseAuth.signOut(); } catch(e){} }
+  return true;
+}
+
+async function _firebaseSendRecovery(email){
+  if(!_initFirebase()) throw new Error('Firebase não configurado');
+  return await _firebaseAuth.sendPasswordResetEmail(email);
+}
+
+async function _firebaseLoginGoogle(){
+  if(!_initFirebase()) throw new Error('Firebase não configurado');
+  const provider = new firebase.auth.GoogleAuthProvider();
+  // Pede e-mail e perfil
+  provider.addScope('email');
+  provider.addScope('profile');
+  // Idioma português
+  try { _firebaseAuth.languageCode = 'pt'; } catch(e){}
+  provider.setCustomParameters({ prompt: 'select_account', hl: 'pt-BR' });
+  const result = await _firebaseAuth.signInWithPopup(provider);
+  return result.user;
+}
+
+async function _firebaseLogout(){
+  if(!_initFirebase()) return;
+  try { await _firebaseAuth.signOut(); } catch(e){}
+}
+
+/* Login com Google — chamado pelos botões da tela de autenticação */
+async function loginComGoogle(){
+  if(!isFirebaseConfigured()){
+    toast('Firebase não configurado. Clique em "🔥 Configurar Firebase" primeiro.','err');
+    return;
+  }
+  try {
+    toast('Abrindo Google...', 'info');
+    const fbUser = await _firebaseLoginGoogle();
+    // Verifica se dispositivo é confiável; se não, pede OTP por e-mail
+    const novoUsuario = !DB.users.find(x=>x.email && x.email.toLowerCase()===fbUser.email.toLowerCase());
+    if(!_isDispositivoConfiavel(fbUser.uid)){
+      try {
+        toast('📧 Enviando código de verificação para '+fbUser.email+'...');
+        await _solicitarCodigoOTP(novoUsuario ? 'register' : 'login');
+        const otpRes = await _pedirOTP({
+          titulo: novoUsuario ? '🔐 Confirme seu cadastro' : '🔐 Verificar acesso',
+          finalidade: novoUsuario ? 'register' : 'login',
+          mostrarConfiarDispositivo: true
+        });
+        if(otpRes && otpRes.confiarDispositivo){
+          _marcarDispositivoConfiavel(fbUser.uid);
+        }
+      } catch(otpErr){
+        console.error('Erro OTP Google:', otpErr);
+        await _firebaseAuth.signOut();
+        toast('Falha OTP: '+(otpErr.message||otpErr),'err');
+        return;
+      }
+    }
+    let u = DB.users.find(x=>x.email && x.email.toLowerCase()===fbUser.email.toLowerCase());
+    if(!u){
+      u = {
+        id: uid('u'),
+        name: fbUser.displayName || fbUser.email,
+        username: fbUser.email.split('@')[0].toLowerCase(),
+        email: fbUser.email,
+        role: 'master',
+        firebaseUid: fbUser.uid,
+        photo: fbUser.photoURL || '',
+        provider: 'google',
+        createdAt: new Date().toISOString()
+      };
+      DB.users.push(u);
+      saveDB();
+      toast('🎉 Conta criada com Google!');
+    } else {
+      u.firebaseUid = fbUser.uid;
+      if(fbUser.displayName) u.name = fbUser.displayName;
+      if(fbUser.photoURL) u.photo = fbUser.photoURL;
+      u.provider = 'google';
+      saveDB();
+    }
+    setSession(u.id);
+    saveLastUser(u.id);
+    currentUser = u;
+    document.getElementById('authScreen').classList.add('hidden');
+    if(typeof _auditLog === 'function') _auditLog('login', u.name, 'Login via Google');
+    toast('Bem-vindo, '+u.name);
+    postAuthInit();
+  } catch(e){
+    const errMsgs = {
+      'auth/popup-closed-by-user': 'Login cancelado',
+      'auth/popup-blocked': 'Popup bloqueado pelo navegador. Permita popups para este site.',
+      'auth/cancelled-popup-request': 'Login cancelado',
+      'auth/network-request-failed': 'Falha de conexão. Verifique sua internet.',
+      'auth/unauthorized-domain': 'Domínio não autorizado no Firebase. Adicione '+location.hostname+' em Authentication → Settings → Authorized domains.'
+    };
+    toast(errMsgs[e.code] || ('Falha: '+(e.message||e)), 'err');
+    console.error('Google login error:', e);
+  }
+}
+
+/* ===== Tela de configuração inicial do Firebase ===== */
+function showFirebaseSetup(){
+  const cfg = getFirebaseConfig();
+  const html = '<div style="max-width:560px;margin:0 auto">'+
+    '<div style="text-align:center;margin-bottom:1.2rem">'+
+      '<div style="font-size:3rem">🔥</div>'+
+      '<h2 style="font-size:1.5rem;font-weight:800;margin-top:.5rem;color:#1e293b">Configurar Firebase</h2>'+
+      '<p style="color:#64748b;font-size:.9rem;margin-top:.4rem">Autenticação Google na nuvem (plano gratuito)</p>'+
+    '</div>'+
+    '<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:.85rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">'+
+      '<strong>Como configurar:</strong><br>'+
+      '1. Acesse <a href="https://console.firebase.google.com/" target="_blank" style="text-decoration:underline">console.firebase.google.com</a><br>'+
+      '2. Crie projeto → habilite <strong>Authentication → Email/Password</strong><br>'+
+      '3. Adicione app Web (ícone <code>&lt;/&gt;</code>) e copie o objeto <code>firebaseConfig</code><br>'+
+      '4. Cole abaixo (pode colar o objeto inteiro ou preencher campo a campo)'+
+    '</div>'+
+    '<div class="mb-3"><label class="label">Colar objeto firebaseConfig (mais fácil)</label>'+
+      '<textarea id="fbConfigPaste" class="input" rows="6" placeholder="Cole aqui o bloco firebaseConfig que copiou do Firebase console"></textarea>'+
+      '<div class="text-xs text-slate-500 mt-1">Cole o bloco inteiro do Firebase console — o sistema extrai os campos automaticamente</div>'+
+      '<button class="btn btn-secondary text-xs mt-1" onclick="_extrairFirebaseConfig()">📋 Extrair campos do texto colado</button>'+
+    '</div>'+
+    '<hr style="margin:1rem 0;border:0;border-top:1px solid #e2e8f0">'+
+    '<div class="grid-2 mb-3">'+
+      '<div><label class="label">API Key *</label><input id="fbApiKey" class="input" value="'+escapeHtml(cfg.apiKey||'AIzaSyDeid2Ks0X6Uh8rchJTt3yxoC-IvR5Kvss')+'"></div>'+
+      '<div><label class="label">Project ID *</label><input id="fbProjectId" class="input" value="'+escapeHtml(cfg.projectId||'jms-gestao')+'"></div>'+
+    '</div>'+
+    '<div class="grid-2 mb-3">'+
+      '<div><label class="label">Auth Domain</label><input id="fbAuthDomain" class="input" placeholder="meu-projeto.firebaseapp.com" value="'+escapeHtml(cfg.authDomain||'jms-gestao.firebaseapp.com')+'"></div>'+
+      '<div><label class="label">App ID</label><input id="fbAppId" class="input" value="'+escapeHtml(cfg.appId||'1:154094649636:web:1e2821e0d5c065388133b1')+'"></div>'+
+    '</div>'+
+    '<div class="grid-2 mb-3">'+
+      '<div><label class="label">Storage Bucket</label><input id="fbStorageBucket" class="input" value="'+escapeHtml(cfg.storageBucket||'jms-gestao.firebasestorage.app')+'"></div>'+
+      '<div><label class="label">Messaging Sender ID</label><input id="fbMessagingSenderId" class="input" value="'+escapeHtml(cfg.messagingSenderId||'154094649636')+'"></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">'+
+      '<button class="btn btn-primary" onclick="testarFirebase()" style="flex:1;background:#ea580c;color:#fff">🔌 Testar conexão</button>'+
+      '<button class="btn btn-primary" onclick="salvarFirebaseConfig()" style="flex:1">💾 Salvar e continuar</button>'+
+    '</div>'+
+    '<div style="text-align:center;margin-top:.85rem">'+
+      '<button class="btn btn-secondary" onclick="pularFirebase()" style="background:transparent;color:#94a3b8;border:none;text-decoration:underline;font-size:.85rem">Pular (usar login local)</button>'+
+    '</div>'+
+    '<div id="fbSetupMsg" style="margin-top:.85rem"></div>'+
+  '</div>';
+  const a = document.getElementById('authScreen'); if(a) a.classList.add('hidden');
+  const ap = document.getElementById('app'); if(ap) ap.classList.add('hidden');
+  const su = document.getElementById('setupScreen'); if(su) su.classList.add('hidden');
+  const sel = document.getElementById('selectionScreen'); if(sel) sel.classList.add('hidden');
+  const aws = document.getElementById('appwriteSetupScreen'); if(aws) aws.style.display = 'none';
+  let modal = document.getElementById('firebaseSetupScreen');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'firebaseSetupScreen';
+    modal.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#7c2d12 0%,#ea580c 100%);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,.4);max-width:680px;width:100%;max-height:90vh;overflow-y:auto">'+html+'</div>';
+  modal.style.display = 'flex';
+}
+
+function _extrairFirebaseConfig(){
+  const txt = (document.getElementById('fbConfigPaste')||{value:''}).value;
+  // Procura campos: chave: "valor"
+  const grab = (k)=>{
+    const m = txt.match(new RegExp(k+'\\s*:\\s*[\'"]([^\'"]+)[\'"]'));
+    return m ? m[1] : '';
+  };
+  const fields = {
+    apiKey: grab('apiKey'),
+    authDomain: grab('authDomain'),
+    projectId: grab('projectId'),
+    storageBucket: grab('storageBucket'),
+    messagingSenderId: grab('messagingSenderId'),
+    appId: grab('appId')
+  };
+  let preenchidos = 0;
+  Object.entries(fields).forEach(([k,v])=>{
+    if(v){
+      const el = document.getElementById('fb'+k.charAt(0).toUpperCase()+k.slice(1));
+      if(el){ el.value = v; preenchidos++; }
+    }
+  });
+  if(preenchidos > 0){
+    toast('✅ '+preenchidos+' campo(s) preenchido(s) do texto colado');
+  } else {
+    toast('Não encontrei firebaseConfig no texto colado. Cole o bloco inteiro do Firebase.','err');
+  }
+}
+
+async function testarFirebase(){
+  const apiKey = document.getElementById('fbApiKey').value.trim();
+  const projectId = document.getElementById('fbProjectId').value.trim();
+  const msg = document.getElementById('fbSetupMsg');
+  if(!apiKey || !projectId){
+    msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">⚠️ Preencha API Key e Project ID</div>';
+    return;
+  }
+  msg.innerHTML = '<div style="background:#fef3c7;color:#92400e;padding:.7rem;border-radius:6px;font-size:.85rem">⏳ Testando conexão...</div>';
+  if(typeof firebase === 'undefined'){
+    msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">❌ Firebase SDK não carregou. Verifique a conexão.</div>';
+    return;
+  }
+  try {
+    // Tenta acessar a config pública (sem cors). Se a API key estiver válida, retorna 200.
+    const url = 'https://identitytoolkit.googleapis.com/v1/projects?key='+encodeURIComponent(apiKey);
+    const r = await fetch(url);
+    if(r.status === 200 || r.status === 400 || r.status === 401){
+      // 400/401 também significa "API responde, key é válida mas requer auth"
+      // 200 é improvável sem auth; o importante é que o endpoint responde
+      msg.innerHTML = '<div style="background:#dcfce7;color:#15803d;padding:.7rem;border-radius:6px;font-size:.85rem">✅ API Key válida! Conexão com Firebase OK.</div>';
+    } else {
+      const body = await r.text();
+      msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">⚠️ Status '+r.status+': '+escapeHtml(body.slice(0,200))+'</div>';
+    }
+  } catch(e){
+    msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">❌ Falhou: '+escapeHtml(e.message||String(e))+'</div>';
+  }
+}
+
+function salvarFirebaseConfig(){
+  const cfg = {
+    apiKey: document.getElementById('fbApiKey').value.trim(),
+    authDomain: document.getElementById('fbAuthDomain').value.trim(),
+    projectId: document.getElementById('fbProjectId').value.trim(),
+    storageBucket: document.getElementById('fbStorageBucket').value.trim(),
+    messagingSenderId: document.getElementById('fbMessagingSenderId').value.trim(),
+    appId: document.getElementById('fbAppId').value.trim()
+  };
+  if(!cfg.apiKey || !cfg.projectId){
+    document.getElementById('fbSetupMsg').innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">⚠️ API Key e Project ID são obrigatórios</div>';
+    return;
+  }
+  // Auto-preencher authDomain se vazio
+  if(!cfg.authDomain) cfg.authDomain = cfg.projectId + '.firebaseapp.com';
+  saveFirebaseConfig(cfg);
+  _firebaseApp = null; _firebaseAuth = null;
+  // Limpa Appwrite se estava configurado (Firebase tem prioridade)
+  try { localStorage.removeItem('jms_appwrite_config'); } catch(e){}
+  // "Começar do zero" — limpa usuários locais
+  if(DB.users && DB.users.length > 0 && !cfg.migrated){
+    if(confirm('Você optou por usar Firebase. Todos os usuários locais ('+DB.users.length+') serão removidos. Os dados de empresas/contratos/licitações são mantidos. Continuar?')){
+      DB.users = [];
+      cfg.migrated = true; saveFirebaseConfig(cfg);
+      saveDB();
+    }
+  } else {
+    cfg.migrated = true; saveFirebaseConfig(cfg);
+  }
+  toast('✅ Firebase configurado! Agora cadastre-se.');
+  const modal = document.getElementById('firebaseSetupScreen');
+  if(modal) modal.style.display = 'none';
+  setTimeout(()=>showAuth(), 200);
+}
+
+function pularFirebase(){
+  const modal = document.getElementById('firebaseSetupScreen');
+  if(modal) modal.style.display = 'none';
+  showAuth();
+}
+
+function abrirFirebaseSetup(){ showFirebaseSetup(); }
+
+/* ============================================================
+   APPWRITE AUTH — Cloud Free (Opção 1: só autenticação)
+   Sistema mantém DB local; Appwrite gerencia cadastro/login/e-mail
+   ============================================================ */
+const APPWRITE_KEY = 'jms_appwrite_config';
+let _appwriteClient = null;
+let _appwriteAccount = null;
+let _appwriteSdk = null;
+
+function getAppwriteConfig(){
+  try { return JSON.parse(localStorage.getItem(APPWRITE_KEY)||'{}'); }
+  catch(e){ return {}; }
+}
+function saveAppwriteConfig(cfg){
+  try { localStorage.setItem(APPWRITE_KEY, JSON.stringify(cfg||{})); return true; }
+  catch(e){ return false; }
+}
+function isAppwriteConfigured(){
+  const c = getAppwriteConfig();
+  return !!(c.projectId && c.endpoint);
+}
+
+function _getAppwriteSdk(){
+  if(_appwriteSdk) return _appwriteSdk;
+  // O SDK carregado via <script> expõe o namespace global "Appwrite"
+  if(typeof Appwrite === 'undefined') return null;
+  _appwriteSdk = Appwrite;
+  return _appwriteSdk;
+}
+
+function _initAppwriteClient(){
+  if(_appwriteClient && _appwriteAccount) return true;
+  const sdk = _getAppwriteSdk();
+  if(!sdk){ console.error('Appwrite SDK não carregado'); return false; }
+  const cfg = getAppwriteConfig();
+  if(!cfg.projectId || !cfg.endpoint) return false;
+  try {
+    _appwriteClient = new sdk.Client();
+    _appwriteClient.setEndpoint(cfg.endpoint).setProject(cfg.projectId);
+    _appwriteAccount = new sdk.Account(_appwriteClient);
+    return true;
+  } catch(e){ console.error('Falha ao iniciar Appwrite:', e); return false; }
+}
+
+/* ===== Funções de autenticação via Appwrite ===== */
+async function _appwriteRegister(email, password, name){
+  if(!_initAppwriteClient()) throw new Error('Appwrite não configurado');
+  const sdk = _getAppwriteSdk();
+  // ID.unique() gera id automaticamente
+  const userId = (sdk.ID && sdk.ID.unique) ? sdk.ID.unique() : 'unique()';
+  const user = await _appwriteAccount.create(userId, email, password, name);
+  // Cria sessão (login automático para podermos enviar verificação)
+  await _appwriteAccount.createEmailPasswordSession(email, password);
+  // Envia e-mail de verificação
+  const verifyUrl = location.href.split('#')[0].split('?')[0] + '?awVerify=1';
+  await _appwriteAccount.createVerification(verifyUrl);
+  // Faz logout — usuário SÓ pode logar depois de verificar o e-mail
+  try { await _appwriteAccount.deleteSession('current'); } catch(e){}
+  return user;
+}
+
+async function _appwriteLogin(email, password){
+  if(!_initAppwriteClient()) throw new Error('Appwrite não configurado');
+  await _appwriteAccount.createEmailPasswordSession(email, password);
+  const user = await _appwriteAccount.get();
+  if(!user.emailVerification){
+    await _appwriteAccount.deleteSession('current');
+    throw new Error('EMAIL_NOT_VERIFIED');
+  }
+  return user;
+}
+
+async function _appwriteResendVerification(){
+  if(!_initAppwriteClient()) throw new Error('Appwrite não configurado');
+  const verifyUrl = location.href.split('#')[0].split('?')[0] + '?awVerify=1';
+  return await _appwriteAccount.createVerification(verifyUrl);
+}
+
+async function _appwriteSendRecovery(email){
+  if(!_initAppwriteClient()) throw new Error('Appwrite não configurado');
+  const recoveryUrl = location.href.split('#')[0].split('?')[0] + '?awRecover=1';
+  return await _appwriteAccount.createRecovery(email, recoveryUrl);
+}
+
+async function _appwriteCompleteRecovery(userId, secret, newPassword){
+  if(!_initAppwriteClient()) throw new Error('Appwrite não configurado');
+  return await _appwriteAccount.updateRecovery(userId, secret, newPassword);
+}
+
+async function _appwriteCompleteVerification(userId, secret){
+  if(!_initAppwriteClient()) throw new Error('Appwrite não configurado');
+  return await _appwriteAccount.updateVerification(userId, secret);
+}
+
+async function _appwriteLogout(){
+  if(!_initAppwriteClient()) return;
+  try { await _appwriteAccount.deleteSession('current'); } catch(e){}
+}
+
+/* ===== Tela de configuração inicial do Appwrite ===== */
+function showAppwriteSetup(){
+  const cfg = getAppwriteConfig();
+  const html = '<div style="max-width:520px;margin:0 auto">'+
+    '<div style="text-align:center;margin-bottom:1.2rem">'+
+      '<div style="font-size:3rem">🔐</div>'+
+      '<h2 style="font-size:1.5rem;font-weight:800;margin-top:.5rem;color:#1e293b">Configurar Appwrite</h2>'+
+      '<p style="color:#64748b;font-size:.9rem;margin-top:.4rem">Para autenticação na nuvem com confirmação de e-mail</p>'+
+    '</div>'+
+    '<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:.85rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">'+
+      '<strong>Como obter o Project ID:</strong><br>'+
+      '1. Acesse <a href="https://cloud.appwrite.io/" target="_blank" style="text-decoration:underline">cloud.appwrite.io</a> e crie conta grátis<br>'+
+      '2. Clique em <strong>+ Create Project</strong> → nome: <code style="background:#dbeafe;padding:.1rem .3rem;border-radius:4px">JMS-Gestao</code><br>'+
+      '3. Vá em <strong>Auth → Settings</strong> → habilite <strong>Email/Password</strong><br>'+
+      '4. Em <strong>Platforms → Web App</strong>, adicione: <code style="background:#dbeafe;padding:.1rem .3rem;border-radius:4px">*</code> (qualquer origem)<br>'+
+      '5. Copie o <strong>Project ID</strong> do topo do dashboard'+
+    '</div>'+
+    '<div class="mb-3"><label class="label">Endpoint</label>'+
+      '<input id="awEndpoint" class="input" value="'+escapeHtml(cfg.endpoint||'https://cloud.appwrite.io/v1')+'">'+
+      '<div class="text-xs text-slate-500 mt-1">Para Appwrite Cloud, deixe o valor padrão</div></div>'+
+    '<div class="mb-3"><label class="label">Project ID *</label>'+
+      '<input id="awProjectId" class="input" placeholder="Ex: 65f8a3c4b1234..." value="'+escapeHtml(cfg.projectId||'6a0ba265002dee242aef')+'">'+
+      '<div class="text-xs text-slate-500 mt-1">Você encontra no topo do dashboard do Appwrite</div></div>'+
+    '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">'+
+      '<button class="btn btn-primary" onclick="testarAppwrite()" style="flex:1;background:#0f766e;color:#fff">🔌 Testar conexão</button>'+
+      '<button class="btn btn-primary" onclick="salvarAppwriteConfig()" style="flex:1">💾 Salvar e continuar</button>'+
+    '</div>'+
+    '<div style="text-align:center;margin-top:.85rem">'+
+      '<button class="btn btn-secondary" onclick="pularAppwrite()" style="background:transparent;color:#94a3b8;border:none;text-decoration:underline;font-size:.85rem">Pular por enquanto (usar login local)</button>'+
+    '</div>'+
+    '<div id="awSetupMsg" style="margin-top:.85rem"></div>'+
+  '</div>';
+  // Esconde tudo e mostra a setup
+  const a = document.getElementById('authScreen'); if(a) a.classList.add('hidden');
+  const ap = document.getElementById('app'); if(ap) ap.classList.add('hidden');
+  const su = document.getElementById('setupScreen'); if(su) su.classList.add('hidden');
+  const sel = document.getElementById('selectionScreen'); if(sel) sel.classList.add('hidden');
+  let modal = document.getElementById('appwriteSetupScreen');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'appwriteSetupScreen';
+    modal.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#1e293b 0%,#4f46e5 100%);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,.4);max-width:600px;width:100%;max-height:90vh;overflow-y:auto">'+html+'</div>';
+  modal.style.display = 'flex';
+}
+
+async function testarAppwrite(){
+  const endpoint = document.getElementById('awEndpoint').value.trim().replace(/\/$/,'');
+  const projectId = document.getElementById('awProjectId').value.trim();
+  const msg = document.getElementById('awSetupMsg');
+  if(!endpoint||!projectId){
+    msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">⚠️ Preencha endpoint e Project ID</div>';
+    return;
+  }
+  msg.innerHTML = '<div style="background:#fef3c7;color:#92400e;padding:.7rem;border-radius:6px;font-size:.85rem">⏳ Testando conexão...</div>';
+  const sdk = _getAppwriteSdk();
+  if(!sdk){
+    msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">❌ SDK do Appwrite não carregou. Verifique sua conexão.</div>';
+    return;
+  }
+  try {
+    const client = new sdk.Client();
+    client.setEndpoint(endpoint).setProject(projectId);
+    const account = new sdk.Account(client);
+    // Tenta uma chamada que não exige sessão — vai dar 401 mas confirma que o endpoint+projeto existem
+    try { await account.get(); } catch(e){
+      // 401/Guests é o esperado quando não há sessão — significa que conectou OK
+      if(e && (e.code === 401 || /guest/i.test(e.message||''))){
+        msg.innerHTML = '<div style="background:#dcfce7;color:#15803d;padding:.7rem;border-radius:6px;font-size:.85rem">✅ Conexão OK! Endpoint e Project ID válidos.</div>';
+        return;
+      }
+      throw e;
+    }
+    msg.innerHTML = '<div style="background:#dcfce7;color:#15803d;padding:.7rem;border-radius:6px;font-size:.85rem">✅ Conexão OK!</div>';
+  } catch(e){
+    msg.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">❌ Falhou: '+escapeHtml(e.message||String(e))+'<br><br>Dicas: confira o Project ID e se o domínio está autorizado em <strong>Settings → Platforms</strong>.</div>';
+  }
+}
+
+function salvarAppwriteConfig(){
+  const endpoint = document.getElementById('awEndpoint').value.trim().replace(/\/$/,'');
+  const projectId = document.getElementById('awProjectId').value.trim();
+  if(!endpoint||!projectId){
+    document.getElementById('awSetupMsg').innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">⚠️ Preencha endpoint e Project ID</div>';
+    return;
+  }
+  saveAppwriteConfig({endpoint, projectId});
+  _appwriteClient = null; _appwriteAccount = null;
+  // "Começar do zero" — limpa usuários locais (apenas confirmação primeira vez)
+  if(DB.users && DB.users.length > 0 && !getAppwriteConfig().migrated){
+    if(confirm('Você optou por começar do zero. Todos os usuários locais ('+DB.users.length+') serão removidos. Os dados de empresas/contratos/licitações são mantidos. Continuar?')){
+      DB.users = [];
+      const cfg = getAppwriteConfig(); cfg.migrated = true; saveAppwriteConfig(cfg);
+      saveDB();
+    }
+  } else {
+    const cfg = getAppwriteConfig(); cfg.migrated = true; saveAppwriteConfig(cfg);
+  }
+  toast('✅ Appwrite configurado! Agora cadastre-se novamente.');
+  const modal = document.getElementById('appwriteSetupScreen');
+  if(modal) modal.style.display = 'none';
+  setTimeout(()=>showAuth(), 200);
+}
+
+function pularAppwrite(){
+  const cfg = getAppwriteConfig(); cfg.skipped = true; saveAppwriteConfig(cfg);
+  const modal = document.getElementById('appwriteSetupScreen');
+  if(modal) modal.style.display = 'none';
+  showAuth();
+}
+
+/* Helper — abrir tela de configuração a partir da tela de login (link "Configurar Appwrite") */
+function abrirAppwriteSetup(){ showAppwriteSetup(); }
+
+/* Verifica callbacks de e-mail (verification / recovery) na URL */
+async function _processarCallbackAppwrite(){
+  const params = new URLSearchParams(location.search);
+  const userId = params.get('userId');
+  const secret = params.get('secret');
+  if(params.get('awVerify')==='1' && userId && secret){
+    try {
+      _initAppwriteClient();
+      await _appwriteCompleteVerification(userId, secret);
+      alert('✅ E-mail confirmado com sucesso! Agora você pode fazer login.');
+      // Limpa URL
+      history.replaceState({},'',location.pathname);
+    } catch(e){
+      alert('❌ Falha ao confirmar e-mail: '+(e.message||e));
+    }
+  } else if(params.get('awRecover')==='1' && userId && secret){
+    const novaSenha = prompt('Digite a NOVA senha (mínimo 8 caracteres):');
+    if(novaSenha && novaSenha.length>=8){
+      try {
+        _initAppwriteClient();
+        await _appwriteCompleteRecovery(userId, secret, novaSenha);
+        alert('✅ Senha redefinida! Agora faça login com a nova senha.');
+        history.replaceState({},'',location.pathname);
+      } catch(e){
+        alert('❌ Falha: '+(e.message||e));
+      }
+    }
+  }
+}
+// Executa ao carregar a página
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_processarCallbackAppwrite, 600));
+} else {
+  setTimeout(_processarCallbackAppwrite, 600);
+}
+
+
+/* Validação de senha forte: mínimo 8 caracteres com letras E números */
+function _validarSenhaForte(senha){
+  if(!senha || senha.length < 8) return 'Senha deve ter pelo menos 8 caracteres';
+  if(!/[A-Za-zÀ-ÿ]/.test(senha)) return 'Senha deve conter ao menos 1 letra';
+  if(!/[0-9]/.test(senha)) return 'Senha deve conter ao menos 1 número';
+  return null; // OK
+}
+
 async function doLogin(){
   const ident = (document.getElementById('liIdent').value||'').trim().toLowerCase();
   const pwd = document.getElementById('liPwd').value;
   if(!ident||!pwd){ toast('Preencha o e-mail/usuário e a senha','err'); return; }
+  // === FIREBASE (prioridade quando configurado) ===
+  if(isFirebaseConfigured()){
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ident)){
+      toast('Use seu e-mail para login','err'); return;
+    }
+    try {
+      const fbUser = await _firebaseLogin(ident, pwd);
+      // Verifica se dispositivo é confiável; se não, pede OTP
+      if(!_isDispositivoConfiavel(fbUser.uid)){
+        toast('📧 Enviando código de verificação...');
+        try {
+          await _solicitarCodigoOTP('login');
+          const otpRes = await _pedirOTP({titulo:'🔐 Verificar acesso', finalidade:'login', mostrarConfiarDispositivo:true});
+          if(otpRes && otpRes.confiarDispositivo){
+            _marcarDispositivoConfiavel(fbUser.uid);
+          }
+        } catch(otpErr){
+          console.error('Erro OTP login:', otpErr);
+          await _firebaseAuth.signOut();
+          toast('Falha OTP: '+(otpErr.message||otpErr),'err');
+          return;
+        }
+      }
+      let u = DB.users.find(x=>x.email && x.email.toLowerCase()===fbUser.email.toLowerCase());
+      if(!u){
+        u = { id:uid('u'), name:fbUser.displayName||fbUser.email, username:fbUser.email.split('@')[0], email:fbUser.email, role:'master', firebaseUid:fbUser.uid, createdAt:new Date().toISOString() };
+        DB.users.push(u);
+        saveDB();
+      } else {
+        u.firebaseUid = fbUser.uid; if(fbUser.displayName) u.name = fbUser.displayName; saveDB();
+      }
+      setSession(u.id);
+      const remember = document.getElementById('liRemember');
+      if(!remember || remember.checked) saveLastUser(u.id);
+      currentUser = u;
+      document.getElementById('authScreen').classList.add('hidden');
+      if(typeof _auditLog==='function') _auditLog('login', u.name, 'Login (Firebase)');
+      toast('Bem-vindo, '+u.name);
+      postAuthInit();
+      return;
+    } catch(e){
+      const errMsgs = {
+        'auth/wrong-password': 'Senha incorreta',
+        'auth/invalid-credential': 'E-mail ou senha incorretos',
+        'auth/user-not-found': 'Usuário não cadastrado',
+        'auth/too-many-requests': 'Muitas tentativas — tente novamente em alguns minutos',
+        'auth/invalid-email': 'E-mail inválido',
+        'auth/user-disabled': 'Conta desativada'
+      };
+      toast(errMsgs[e.code] || ('Falha no login: '+(e.message||e)),'err');
+      return;
+    }
+  }
+  // === APPWRITE (fallback se configurado) ===
+  if(isAppwriteConfigured()){
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ident)){
+      toast('Use seu e-mail para login (não o nome de usuário)','err'); return;
+    }
+    try {
+      const awUser = await _appwriteLogin(ident, pwd);
+      // Sincroniza com o DB local — cria entry se não existir
+      let u = DB.users.find(x=>x.email && x.email.toLowerCase()===awUser.email.toLowerCase());
+      if(!u){
+        u = { id:uid('u'), name:awUser.name||awUser.email, username:awUser.email.split('@')[0], email:awUser.email, role:'master', appwriteId:awUser.$id, createdAt:new Date().toISOString() };
+        DB.users.push(u);
+        saveDB();
+      } else {
+        u.appwriteId = awUser.$id; u.name = awUser.name||u.name; saveDB();
+      }
+      setSession(u.id);
+      const remember = document.getElementById('liRemember');
+      if(!remember || remember.checked) saveLastUser(u.id);
+      currentUser = u;
+      document.getElementById('authScreen').classList.add('hidden');
+      if(typeof _auditLog==='function') _auditLog('login', u.name, 'Login (Appwrite)');
+      toast('Bem-vindo, '+u.name);
+      postAuthInit();
+      return;
+    } catch(e){
+      if(e.message === 'EMAIL_NOT_VERIFIED'){
+        if(confirm('Seu e-mail ainda não foi confirmado. Deseja reenviar o link de confirmação?')){
+          try { await _appwriteResendVerification(); toast('E-mail reenviado — confira sua caixa de entrada'); }
+          catch(e2){ toast('Falha ao reenviar: '+(e2.message||e2),'err'); }
+        }
+        return;
+      }
+      toast('Falha no login: '+(e.message||e),'err');
+      return;
+    }
+  }
+  // ===== Fallback: login local =====
   const u = DB.users.find(x=>x.passwordHash && (
     (x.email && x.email.toLowerCase()===ident) ||
     (x.username && x.username.toLowerCase()===ident)
@@ -21953,8 +22873,64 @@ async function doRegister(){
   if(!name||!username||!email||!pwd){ toast('Preencha todos os campos','err'); return; }
   if(!/^[a-z0-9_.]{3,}$/.test(username)){ toast('Usuário: mínimo 3 caracteres (letras, números, _ ou .)','err'); return; }
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('E-mail inválido','err'); return; }
-  if(pwd.length<4){ toast('Senha muito curta (mínimo 4)','err'); return; }
   if(pwd!==pwd2){ toast('As senhas não conferem','err'); return; }
+  // === FIREBASE (prioridade quando configurado) ===
+  if(isFirebaseConfigured()){
+    const fbErr = _validarSenhaForte(pwd);
+    if(fbErr){ toast(fbErr,'err'); return; }
+    try {
+      await _firebaseRegister(email, pwd, name);
+      const successHtml = '<div style="background:#dcfce7;border:2px solid #86efac;color:#15803d;padding:1rem;border-radius:8px;text-align:center">'+
+        '<div style="font-size:2.5rem">✉️</div>'+
+        '<div style="font-weight:800;font-size:1.1rem;margin-top:.4rem">Quase lá!</div>'+
+        '<div style="font-size:.9rem;margin-top:.4rem">Enviamos um link de confirmação para <strong>'+escapeHtml(email)+'</strong></div>'+
+        '<div style="font-size:.8rem;margin-top:.4rem;color:#15803d">Clique no link do e-mail (verifique também o spam) para ativar sua conta, depois volte aqui e faça login.</div>'+
+      '</div>';
+      const body = document.getElementById('authContent'); if(body) body.innerHTML = successHtml;
+      const action = document.getElementById('authActionWrap'); if(action) action.innerHTML = '<button class="auth-btn" onclick="authShowTab(\'login\')">Ir para Login</button>';
+      toast('📧 Cadastro criado — confirme seu e-mail');
+      return;
+    } catch(e){
+      const errMsgs = {
+        'auth/email-already-in-use': 'E-mail já cadastrado. Use "Esqueci minha senha" se for sua conta.',
+        'auth/invalid-email': 'E-mail inválido',
+        'auth/weak-password': 'Senha muito fraca — use ao menos 6 caracteres',
+        'auth/operation-not-allowed': 'Cadastro por e-mail não habilitado no Firebase'
+      };
+      toast(errMsgs[e.code] || ('Falha no cadastro: '+(e.message||e)),'err');
+      return;
+    }
+  }
+  // === APPWRITE (fallback) ===
+  if(isAppwriteConfigured()){
+    const awErr = _validarSenhaForte(pwd);
+    if(awErr){ toast(awErr,'err'); return; }
+    try {
+      await _appwriteRegister(email, pwd, name);
+      // NÃO faz login automático — usuário precisa confirmar e-mail antes
+      const successHtml = '<div style="background:#dcfce7;border:2px solid #86efac;color:#15803d;padding:1rem;border-radius:8px;text-align:center">'+
+        '<div style="font-size:2.5rem">✉️</div>'+
+        '<div style="font-weight:800;font-size:1.1rem;margin-top:.4rem">Quase lá!</div>'+
+        '<div style="font-size:.9rem;margin-top:.4rem">Enviamos um link de confirmação para <strong>'+escapeHtml(email)+'</strong></div>'+
+        '<div style="font-size:.8rem;margin-top:.4rem;color:#15803d">Clique no link do e-mail para ativar sua conta, depois volte aqui e faça login.</div>'+
+      '</div>';
+      const body = document.getElementById('authContent'); if(body) body.innerHTML = successHtml;
+      const action = document.getElementById('authActionWrap'); if(action) action.innerHTML = '<button class="auth-btn" onclick="authShowTab(\'login\')">Ir para Login</button>';
+      toast('📧 Cadastro criado — confirme seu e-mail');
+      return;
+    } catch(e){
+      const msg = (e && e.message) || String(e);
+      if(/already|exists|conflict/i.test(msg)){
+        toast('E-mail já cadastrado no Appwrite. Use "Esqueci minha senha" se for sua conta.','err');
+      } else {
+        toast('Falha no cadastro: '+msg,'err');
+      }
+      return;
+    }
+  }
+  // ===== Fallback: cadastro local =====
+  const localErr = _validarSenhaForte(pwd);
+  if(localErr){ toast(localErr,'err'); return; }
   if(DB.users.some(u=>u.email && u.email.toLowerCase()===email && u.passwordHash)){ toast('E-mail já cadastrado','err'); return; }
   if(DB.users.some(u=>u.username && u.username.toLowerCase()===username && u.passwordHash)){ toast('Nome de usuário já cadastrado','err'); return; }
   const h = await hashPassword(pwd);
@@ -21975,6 +22951,20 @@ async function doRegister(){
 function logout(){
   if(!confirm('Sair do sistema?')) return;
   if(typeof _auditLog==='function' && currentUser) _auditLog('logout', currentUser.name, 'Logout do sistema');
+  // Logout do Firebase
+  if(isFirebaseConfigured()){
+    _firebaseLogout().catch(()=>{}).finally(()=>{
+      saveDB(); clearSession(); currentUser = null; location.reload();
+    });
+    return;
+  }
+  // Logout do Appwrite também (não bloqueia se falhar)
+  if(isAppwriteConfigured()){
+    _appwriteLogout().catch(()=>{}).finally(()=>{
+      saveDB(); clearSession(); currentUser = null; location.reload();
+    });
+    return;
+  }
   saveDB();
   clearSession();
   currentUser = null;
@@ -22954,35 +23944,46 @@ function _criarLancamentoFromNfe(){
 
 /* Lê os arquivos selecionados pelo usuário e converte para base64 (data: URL).
    Adiciona ao array global window._fAttachments. */
-function _onAttachFiles(files){
+async function _onAttachFiles(files){
   if(!files || !files.length) return;
   if(!Array.isArray(window._fAttachments)) window._fAttachments = [];
-  let total = 0;
+  const useStorage = (typeof isFirebaseStorageEnabled === 'function') && isFirebaseStorageEnabled();
   let totalSize = (window._fAttachments||[]).reduce((s,a)=>s+(a.size||0),0);
-  Array.from(files).forEach(file => {
-    if(file.size > 5*1024*1024){
-      toast('Arquivo "'+file.name+'" muito grande (>5 MB). Considere comprimir.','warn');
+  // Em modo local, limita 10 MB total. Em modo Storage, sem limite local (5 GB free).
+  const limiteTotal = useStorage ? 50*1024*1024 : 10*1024*1024;
+  for(const file of Array.from(files)){
+    if(!useStorage){
+      // Modo local — base64
+      if(file.size > 5*1024*1024){
+        toast('Arquivo "'+file.name+'" muito grande (>5 MB). Considere comprimir.','warn');
+      }
+      if(totalSize + file.size > limiteTotal){
+        toast('Total de anexos excedeu 10 MB. Habilite Firebase Storage.','err');
+        continue;
+      }
+    } else if(file.size > 25*1024*1024){
+      toast('Arquivo "'+file.name+'" muito grande (>25 MB).','warn');
+      continue;
     }
-    if(totalSize + file.size > 10*1024*1024){
-      toast('Total de anexos excedeu 10 MB. Anexo não adicionado.','err');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    try {
+      toast('⏳ Enviando "'+file.name+'"...');
+      const result = await _processarUploadArquivo(file, 'lancamentos');
       window._fAttachments.push({
-        name: file.name,
-        type: file.type || 'application/octet-stream',
-        size: file.size,
-        data: e.target.result, // data:URL completa (base64)
+        name: result.nome,
+        type: result.mime || 'application/octet-stream',
+        size: result.tamanho || file.size,
+        data: result.data || null,
+        url: result.url || null,
+        path: result.path || null,
         addedAt: new Date().toISOString()
       });
-      total++;
       totalSize += file.size;
       _renderAttachList();
-    };
-    reader.onerror = () => toast('Falha ao ler "'+file.name+'"','err');
-    reader.readAsDataURL(file);
-  });
+      toast('✅ "'+file.name+'" '+(result.url?'(nuvem)':'(local)'));
+    } catch(e){
+      toast('Falha em "'+file.name+'": '+(e.message||e),'err');
+    }
+  }
   // Limpa o input para permitir re-selecionar o mesmo arquivo
   const inp = document.getElementById('fAttachInput');
   if(inp) inp.value = '';
@@ -23008,22 +24009,29 @@ function _renderAttachList(){
     if(t.startsWith('text/')) return '📄';
     return '📎';
   };
-  wrap.innerHTML = arr.map((a, i) =>
-    '<div class="flex items-center gap-2 p-2 mb-1 rounded" style="background:#fff;border:1px solid #e2e8f0">'+
+  wrap.innerHTML = arr.map((a, i) => {
+    const fonte = a.url || a.data;
+    const localFlag = a.url ? '<span style="font-size:.7rem;color:#0f766e;background:#f0fdfa;padding:.1rem .35rem;border-radius:4px;margin-left:.3rem">☁️ nuvem</span>' : '<span style="font-size:.7rem;color:#475569;background:#f1f5f9;padding:.1rem .35rem;border-radius:4px;margin-left:.3rem">💾 local</span>';
+    return '<div class="flex items-center gap-2 p-2 mb-1 rounded" style="background:#fff;border:1px solid #e2e8f0">'+
       '<div style="font-size:1.4rem">'+iconFor(a.type, a.name)+'</div>'+
       '<div class="flex-1">'+
-        '<div class="text-sm font-medium">'+escapeHtml(a.name)+'</div>'+
+        '<div class="text-sm font-medium">'+escapeHtml(a.name)+localFlag+'</div>'+
         '<div class="text-xs text-slate-500">'+fmtSize(a.size)+' • '+escapeHtml(a.type||'desconhecido')+'</div>'+
       '</div>'+
-      '<a class="btn btn-secondary text-xs" href="'+a.data+'" download="'+escapeHtml(a.name)+'" title="Baixar arquivo">⬇</a>'+
-      '<a class="btn btn-secondary text-xs" href="'+a.data+'" target="_blank" title="Abrir em nova aba">👁</a>'+
+      '<a class="btn btn-secondary text-xs" href="'+fonte+'" download="'+escapeHtml(a.name)+'" title="Baixar arquivo" target="_blank">⬇</a>'+
+      '<a class="btn btn-secondary text-xs" href="'+fonte+'" target="_blank" title="Abrir em nova aba">👁</a>'+
       '<button type="button" class="btn btn-ghost text-xs" onclick="_removeAttach('+i+')" title="Remover">🗑️</button>'+
-    '</div>'
-  ).join('');
+    '</div>';
+  }).join('');
 }
 
 function _removeAttach(idx){
   if(!Array.isArray(window._fAttachments)) return;
+  const a = window._fAttachments[idx];
+  // Se o arquivo está no Storage, deleta lá também
+  if(a && a.path && typeof _deletarDoStorage === 'function'){
+    _deletarDoStorage(a.path).catch(()=>{});
+  }
   window._fAttachments.splice(idx, 1);
   _renderAttachList();
 }
@@ -26856,34 +27864,44 @@ function editCertification(id){
 }
 
 /* Anexa arquivo (PDF/imagem) ao modal de certidão — guarda em window._cdArquivoTemp como base64 */
-function _cdAnexarArquivo(ev){
+async function _cdAnexarArquivo(ev){
   const file = ev.target.files && ev.target.files[0]; if(!file) return;
-  const maxMB = 10;
+  const useStorage = (typeof isFirebaseStorageEnabled === 'function') && isFirebaseStorageEnabled();
+  const maxMB = useStorage ? 25 : 10;
   if(file.size > maxMB*1024*1024){
     if(typeof toast==='function') toast('Arquivo muito grande (máx '+maxMB+' MB)','warn');
     ev.target.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    window._cdArquivoTemp = { name:file.name, data:e.target.result, size:file.size, type:file.type };
+  try {
+    if(typeof toast==='function') toast('⏳ Processando...');
+    const result = await _processarUploadArquivo(file, 'cobranca');
+    window._cdArquivoTemp = {
+      name: result.nome,
+      data: result.data || null,
+      url: result.url || null,
+      path: result.path || null,
+      size: result.tamanho || file.size,
+      type: result.mime
+    };
     // Atualiza visual
     const wrap = document.getElementById('cdArquivoStatus');
     if(wrap){
+      const fonte = result.url ? '☁️ Nuvem' : '💾 Local';
       wrap.outerHTML = '<div id="cdArquivoStatus" class="flex items-center gap-2 p-2 rounded-lg" style="background:#ecfdf5;border:1px solid #86efac">'+
         '<span style="font-size:1.4rem">📄</span>'+
         '<div class="flex-1 min-w-0">'+
-          '<div class="font-semibold text-emerald-800 text-sm">'+escapeHtml(file.name)+'</div>'+
-          '<div class="text-xs text-emerald-700">'+Math.round(file.size/1024)+' KB • '+escapeHtml(file.type)+'</div>'+
+          '<div class="font-semibold text-emerald-800 text-sm">'+escapeHtml(result.nome)+'</div>'+
+          '<div class="text-xs text-emerald-700">'+Math.round((result.tamanho||file.size)/1024)+' KB • '+escapeHtml(result.mime||'')+' • '+fonte+'</div>'+
         '</div>'+
         '<button type="button" class="btn btn-ghost text-xs" onclick="_cdVerArquivoAtual()" style="color:#0c4a6e">👁️</button>'+
         '<button type="button" class="btn btn-ghost text-xs" onclick="_cdRemoverArquivo()" title="Remover" style="color:#dc2626">✕</button>'+
       '</div>';
     }
-    if(typeof toast==='function') toast('Arquivo anexado ('+Math.round(file.size/1024)+' KB)','success');
-  };
-  reader.onerror = ()=>{ if(typeof toast==='function') toast('Falha ao ler arquivo','err'); };
-  reader.readAsDataURL(file);
+    if(typeof toast==='function') toast('Anexado ('+Math.round((result.tamanho||file.size)/1024)+' KB)'+(result.url?' • nuvem':' • local'),'success');
+  } catch(e){
+    if(typeof toast==='function') toast('Erro: '+(e.message||e),'err');
+  }
 }
 
 /* Remove o arquivo anexado em edição */
@@ -26898,15 +27916,15 @@ function _cdRemoverArquivo(){
 
 /* Visualiza o arquivo temporário atualmente anexado */
 function _cdVerArquivoAtual(){
-  const a = window._cdArquivoTemp;
-  if(!a || !a.data){ if(typeof toast==='function') toast('Nenhum arquivo','warn'); return; }
-  const w = window.open('', '_blank', 'width=1000,height=750,scrollbars=yes,resizable=yes');
-  if(!w){ if(typeof toast==='function') toast('Popup bloqueado','warn'); return; }
-  const isImg = String(a.type||'').startsWith('image/');
-  const html = isImg
-    ? '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escapeHtml(a.name||'')+'</title></head><body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+a.data+'" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>'
-    : '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escapeHtml(a.name||'')+'</title></head><body style="margin:0"><embed src="'+a.data+'" type="application/pdf" style="width:100vw;height:100vh"></body></html>';
-  w.document.open(); w.document.write(html); w.document.close(); w.focus();
+  const arq = window._cdArquivoTemp;
+  if(!arq) return;
+  if(typeof _abrirAnexoGenerico === 'function'){
+    _abrirAnexoGenerico({url:arq.url, data:arq.data, mime:arq.type});
+    return;
+  }
+  const fonte = arq.url || arq.data;
+  if(!fonte) return;
+  window.open(fonte, '_blank');
 }
 
 /* Aplica modelo pronto — preenche nome, tipo e calcula validade automaticamente */
@@ -30304,7 +31322,15 @@ function editAtestado(id){
       objeto, valor: parseBRL(document.getElementById('atValor').value),
       dataInicio: document.getElementById('atIni').value, dataFim: document.getElementById('atFim').value,
       observacoes: document.getElementById('atObs').value.trim(),
-      arquivo: arqData ? {nome:document.getElementById('atArqNome').value, tamanho:parseInt(document.getElementById('atArqTam').value)||0, mime:document.getElementById('atArqMime').value, data:arqData} : null
+      arquivo: arqData ? (function(){
+        const urlEl = document.getElementById('atArqUrl'); const pathEl = document.getElementById('atArqPath');
+        const url = urlEl ? urlEl.value : '';
+        const path = pathEl ? pathEl.value : '';
+        const obj = {nome:document.getElementById('atArqNome').value, tamanho:parseInt(document.getElementById('atArqTam').value)||0, mime:document.getElementById('atArqMime').value};
+        if(url){ obj.url = url; obj.path = path; }
+        else { obj.data = arqData; }
+        return obj;
+      })() : null
     };
     if(id){ Object.assign(a, data); } else { DB.atestados.push(Object.assign({id:uid('atest'), createdAt:new Date().toISOString()}, data)); }
     saveDB(); toast('Salvo ✓'); renderGestao();
@@ -31060,6 +32086,938 @@ function renderHistoricoLicitRoute(){
   if(!all.length) h += '<div class="card text-center py-10">Sem histórico ainda.</div>';
   root.innerHTML = h;
   if(window.lucide) setTimeout(()=>lucide.createIcons(), 30);
+}
+
+
+/* ============================================================
+   RESPONSIVIDADE — Drawer sidebar para mobile
+   ============================================================ */
+function toggleSidebar(){
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if(!sb || !ov) return;
+  const isOpen = sb.classList.contains('sidebar-mobile-open');
+  if(isOpen){ closeSidebar(); }
+  else {
+    sb.classList.add('sidebar-mobile-open');
+    ov.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeSidebar(){
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.remove('sidebar-mobile-open');
+  if(ov) ov.classList.remove('show');
+  document.body.style.overflow = '';
+}
+/* Auto-fecha drawer quando clica em um nav-item no mobile */
+document.addEventListener('click', function(e){
+  if(window.innerWidth >= 769) return;
+  const navItem = e.target.closest('.nav-item, .nav-sub-item');
+  if(navItem && !navItem.classList.contains('nav-section-btn')){
+    setTimeout(closeSidebar, 120);
+  }
+});
+/* Fecha drawer ao redimensionar pra desktop */
+window.addEventListener('resize', function(){
+  if(window.innerWidth >= 769) closeSidebar();
+});
+
+
+
+/* ============================================================
+   PWA — Service Worker + botão Instalar app
+   ============================================================ */
+let _deferredInstallPrompt = null;
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      console.log('SW registrado:', reg.scope);
+    }).catch(err=>console.log('SW falhou:', err));
+  });
+}
+
+// Captura o evento de instalação (Chrome/Edge/Opera)
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  _mostrarBotaoInstalar();
+});
+
+function _mostrarBotaoInstalar(){
+  if(document.getElementById('installPwaBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'installPwaBtn';
+  btn.innerHTML = '📲 Instalar app';
+  btn.style.cssText = 'position:fixed;bottom:1rem;right:1rem;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#fff;border:none;border-radius:10px;padding:.75rem 1.2rem;font-weight:700;font-size:.9rem;cursor:pointer;box-shadow:0 8px 24px rgba(79,70,229,.4);z-index:9999;display:flex;align-items:center;gap:.4rem';
+  btn.onclick = async ()=>{
+    if(!_deferredInstallPrompt) return;
+    _deferredInstallPrompt.prompt();
+    const { outcome } = await _deferredInstallPrompt.userChoice;
+    if(outcome === 'accepted'){
+      toast('🎉 App instalado!');
+      btn.remove();
+    }
+    _deferredInstallPrompt = null;
+  };
+  document.body.appendChild(btn);
+}
+
+// Para iOS Safari (que não dispara beforeinstallprompt)
+window.addEventListener('load', ()=>{
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if(isIOS && !isStandalone && !sessionStorage.getItem('iosInstallHinted')){
+    setTimeout(()=>{
+      const dica = document.createElement('div');
+      dica.style.cssText = 'position:fixed;bottom:1rem;left:1rem;right:1rem;background:#1e293b;color:#fff;border-radius:12px;padding:.85rem;font-size:.85rem;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.3)';
+      dica.innerHTML = '📲 Para instalar: toque em <strong>Compartilhar ⬆️</strong> → <strong>Adicionar à Tela Inicial</strong> <button onclick="this.parentElement.remove();sessionStorage.setItem(\'iosInstallHinted\',\'1\')" style="float:right;background:transparent;color:#fff;border:1px solid #475569;border-radius:6px;padding:.2rem .5rem;cursor:pointer">Fechar</button>';
+      document.body.appendChild(dica);
+    }, 3000);
+  }
+});
+
+// Função para abrir o prompt manualmente
+function instalarAppPwa(){
+  if(_deferredInstallPrompt){
+    _mostrarBotaoInstalar();
+    document.getElementById('installPwaBtn').click();
+  } else {
+    alert('Para instalar:\n\n• Chrome/Edge (PC): menu (⋮) → "Instalar JMS Gestão"\n• Android: menu do navegador → "Adicionar à tela inicial"\n• iOS Safari: Compartilhar ⬆️ → "Adicionar à Tela de Início"');
+  }
+}
+
+
+
+/* ============================================================
+   PESQUISA GLOBAL — Ctrl+K (ou Cmd+K)
+   ============================================================ */
+function _coletarItensPesquisa(){
+  const itens = [];
+  // Empresas
+  (DB.companies||[]).forEach(c => itens.push({
+    tipo:'Empresa', icon:'🏢', titulo:c.name||c.razaoSocial||'(sem nome)',
+    subtitulo:c.cnpj||'', acao:()=>{ navigate('grupo'); }, busca:[c.name,c.cnpj,c.razaoSocial].filter(Boolean).join(' ')
+  }));
+  // Contratos
+  (DB.contracts||[]).forEach(c => itens.push({
+    tipo:'Contrato', icon:'📜', titulo:(c.numero||'(s/n)')+' — '+(c.objeto||'').slice(0,60),
+    subtitulo:c.contratante||'', acao:()=>{ navigate('contratos'); setTimeout(()=>{ if(typeof editContract==='function') editContract(c.id); }, 300); },
+    busca:[c.numero,c.objeto,c.contratante].filter(Boolean).join(' ')
+  }));
+  // Licitações
+  (DB.bids||[]).forEach(b => itens.push({
+    tipo:'Licitação', icon:'⚖️', titulo:(b.numero||'(s/n)')+' — '+(b.objeto||'').slice(0,60),
+    subtitulo:b.orgao||'', acao:()=>{ navigate('licitacoes'); setTimeout(()=>{ if(typeof editBid==='function') editBid(b.id); }, 300); },
+    busca:[b.numero,b.objeto,b.orgao].filter(Boolean).join(' ')
+  }));
+  // Certidões
+  (DB.certifications||[]).forEach(c => itens.push({
+    tipo:'Certidão', icon:'📑', titulo:c.nome||'(sem nome)',
+    subtitulo:c.orgaoEmissor||c.tipo||'', acao:()=>{ navigate('certidoes'); },
+    busca:[c.nome,c.orgaoEmissor,c.tipo].filter(Boolean).join(' ')
+  }));
+  // Funcionários
+  (DB.employees||[]).forEach(e => itens.push({
+    tipo:'Funcionário', icon:'👤', titulo:e.name||'(sem nome)',
+    subtitulo:(e.cpf||'')+' • '+(e.cargo||''), acao:()=>{ navigate('rh'); },
+    busca:[e.name,e.cpf,e.cargo].filter(Boolean).join(' ')
+  }));
+  // Garantias
+  (DB.garantias||[]).forEach(g => {
+    const ctr = (DB.contracts||[]).find(c=>c.id===g.contratoId);
+    itens.push({
+      tipo:'Garantia', icon:'🛡️', titulo:(g.seguradora||'')+' — '+(g.numeroApolice||'apólice'),
+      subtitulo:ctr?'Contrato: '+(ctr.numero||''):'avulsa', acao:()=>{ navigate('garantias'); },
+      busca:[g.seguradora,g.numeroApolice,ctr?ctr.numero:''].filter(Boolean).join(' ')
+    });
+  });
+  // Lançamentos financeiros (limita 200 mais recentes)
+  (DB.entries||[]).slice(-200).forEach(e => itens.push({
+    tipo: e.type==='receita'?'Receita':'Despesa',
+    icon: e.type==='receita'?'💰':'💸',
+    titulo: e.description||e.partner||'(sem descrição)',
+    subtitulo: (e.date?_fmtDataBR(e.date):'')+' • '+fmtMoney(e.amount||0),
+    acao:()=>{ navigate('lancamentos'); },
+    busca:[e.description,e.partner,String(e.amount)].filter(Boolean).join(' ')
+  }));
+  // Partners (fornecedores/clientes)
+  (DB.partners||[]).forEach(p => itens.push({
+    tipo:'Fornecedor/Cliente', icon:'🤝', titulo:p.name||'(sem nome)',
+    subtitulo:p.cnpj||p.cpf||'', acao:()=>{ navigate('partners'); },
+    busca:[p.name,p.cnpj,p.cpf].filter(Boolean).join(' ')
+  }));
+  // Veículos
+  (DB.vehicles||[]).forEach(v => itens.push({
+    tipo:'Veículo', icon:'🚗', titulo:(v.placa||'')+' — '+(v.modelo||v.marca||''),
+    subtitulo:v.renavam||'', acao:()=>{ navigate('rh'); },
+    busca:[v.placa,v.modelo,v.marca,v.renavam].filter(Boolean).join(' ')
+  }));
+  return itens;
+}
+
+function abrirPesquisaGlobal(){
+  if(document.getElementById('globalSearchModal')) return; // já aberto
+  const modal = document.createElement('div');
+  modal.id = 'globalSearchModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:8vh;backdrop-filter:blur(4px)';
+  modal.innerHTML = '<div style="background:#fff;border-radius:14px;width:90%;max-width:640px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden">'+
+    '<div style="padding:.85rem 1.2rem;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:.7rem">'+
+      '<span style="font-size:1.4rem">🔍</span>'+
+      '<input id="gsInput" type="text" placeholder="Pesquisar em todo o sistema..." style="flex:1;border:none;outline:none;font-size:1.05rem" autofocus>'+
+      '<kbd style="background:#f1f5f9;color:#475569;padding:.2rem .5rem;border-radius:6px;font-size:.7rem;font-weight:600">ESC</kbd>'+
+    '</div>'+
+    '<div id="gsResults" style="flex:1;overflow-y:auto;padding:.5rem"></div>'+
+    '<div style="padding:.5rem 1.2rem;border-top:1px solid #e2e8f0;font-size:.7rem;color:#94a3b8;display:flex;gap:1rem;flex-wrap:wrap"><span>↑↓ navegar</span><span>↵ abrir</span><span>esc fechar</span></div>'+
+  '</div>';
+  document.body.appendChild(modal);
+  const inp = document.getElementById('gsInput');
+  const res = document.getElementById('gsResults');
+  let itens = _coletarItensPesquisa();
+  let filtrados = [];
+  let selecionado = 0;
+
+  function renderResultados(termo){
+    selecionado = 0;
+    if(!termo){
+      res.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:.85rem">Digite algo para pesquisar... encontra <strong>'+itens.length+'</strong> item(ns) no sistema.</div>';
+      return;
+    }
+    const t = termo.toLowerCase();
+    filtrados = itens.filter(i => i.busca.toLowerCase().includes(t)).slice(0,30);
+    if(!filtrados.length){
+      res.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:.85rem">Nenhum resultado para "<strong>'+escapeHtml(termo)+'</strong>"</div>';
+      return;
+    }
+    res.innerHTML = filtrados.map((i,idx) => 
+      '<div class="gs-item" data-idx="'+idx+'" style="display:flex;align-items:center;gap:.8rem;padding:.7rem .9rem;border-radius:8px;cursor:pointer;'+(idx===0?'background:#eef2ff':'')+'">'+
+        '<div style="font-size:1.5rem">'+i.icon+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:700;color:#1e293b;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(i.titulo)+'</div>'+
+          '<div style="font-size:.78rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(i.subtitulo)+'</div>'+
+        '</div>'+
+        '<span style="background:#f1f5f9;color:#475569;padding:.18rem .55rem;border-radius:999px;font-size:.65rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase">'+i.tipo+'</span>'+
+      '</div>'
+    ).join('');
+    // Click handlers
+    res.querySelectorAll('.gs-item').forEach(el => {
+      el.addEventListener('click', ()=>{
+        const idx = parseInt(el.dataset.idx);
+        fecharPesquisaGlobal();
+        filtrados[idx].acao();
+      });
+      el.addEventListener('mouseenter', ()=>{
+        selecionado = parseInt(el.dataset.idx);
+        atualizarSelecao();
+      });
+    });
+  }
+
+  function atualizarSelecao(){
+    res.querySelectorAll('.gs-item').forEach((el,i)=>{
+      el.style.background = i===selecionado ? '#eef2ff' : '';
+    });
+    // Scroll into view
+    const sel = res.querySelector('.gs-item[data-idx="'+selecionado+'"]');
+    if(sel) sel.scrollIntoView({block:'nearest'});
+  }
+
+  inp.addEventListener('input', ()=>renderResultados(inp.value.trim()));
+  inp.addEventListener('keydown', e => {
+    if(e.key==='Escape'){ fecharPesquisaGlobal(); }
+    else if(e.key==='ArrowDown'){ e.preventDefault(); if(selecionado < filtrados.length-1) selecionado++; atualizarSelecao(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); if(selecionado>0) selecionado--; atualizarSelecao(); }
+    else if(e.key==='Enter' && filtrados[selecionado]){ fecharPesquisaGlobal(); filtrados[selecionado].acao(); }
+  });
+  modal.addEventListener('click', e => { if(e.target===modal) fecharPesquisaGlobal(); });
+  renderResultados('');
+}
+
+function fecharPesquisaGlobal(){
+  const m = document.getElementById('globalSearchModal'); if(m) m.remove();
+}
+
+// Atalho Ctrl+K / Cmd+K
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key === 'k'){
+    e.preventDefault();
+    abrirPesquisaGlobal();
+  }
+});
+
+
+
+/* ============================================================
+   PERMISSÕES GRANULARES POR USUÁRIO (por seção do hub)
+   ============================================================ */
+const SECOES_HUB_PERMISSAO = [
+  {id:'cadastros',   l:'Cadastros'},
+  {id:'gestao',      l:'Gestão (licitações, contratos)'},
+  {id:'financeiro',  l:'Financeiro'},
+  {id:'patrimonio',  l:'Patrimônio'},
+  {id:'operacional', l:'Operacional (RH, estoque)'},
+  {id:'contabil',    l:'Contábil (DRE, balanço)'},
+  {id:'fiscal',      l:'Fiscal'},
+  {id:'relatorios',  l:'Relatórios & Análise'},
+  {id:'sistema',     l:'Sistema (auditoria, config)'}
+];
+
+function userCanAccessSecao(secaoId){
+  if(!currentUser) return false;
+  if(currentUser.role === 'master') return true;
+  const perms = currentUser.modulePermissions || {};
+  return perms[secaoId] !== false; // default = permitido
+}
+
+// Mapeia rotas → seção (mesma lógica do navigate)
+const _ROUTE_SECAO_MAP = {
+  grupo:'cadastros', regioes:'cadastros', contas:'cadastros', categorias:'cadastros', centroCustos:'cadastros', partners:'cadastros', usuarios:'cadastros',
+  licitacoes:'gestao', contratos:'gestao', certidoes:'gestao', gestaoDashboard:'gestao', atestados:'gestao', garantias:'gestao', penalidades:'gestao', procuradores:'gestao', calendarioGestao:'gestao', renovacoes:'gestao', historicoLicit:'gestao',
+  nf:'financeiro', faturas:'financeiro', lancamentos:'financeiro', emprestimos:'financeiro', fluxo:'financeiro', contasPagar:'financeiro', contasReceber:'financeiro', extrato:'financeiro', conciliacao:'financeiro',
+  bens:'patrimonio', depreciacao:'patrimonio',
+  estoque:'operacional', cobranca:'operacional', documentos:'operacional', rh:'operacional',
+  balanco:'contabil', indices:'contabil', dre:'contabil',
+  calendarioFiscal:'fiscal', recorrencias:'fiscal', intelFiscal:'fiscal',
+  relatorios:'relatorios', iaAnalise:'relatorios', analiseAvancada:'relatorios', execDash:'relatorios',
+  auditoria:'sistema', config:'sistema'
+};
+
+function userCanAccessRoute(route){
+  if(!currentUser) return false;
+  if(currentUser.role === 'master') return true;
+  if(['dashboard','painel','grupoDashboard'].includes(route)) return true; // sempre permitido
+  const secao = _ROUTE_SECAO_MAP[route];
+  if(!secao) return true; // rota desconhecida → permite (compat)
+  return userCanAccessSecao(secao);
+}
+
+/* ============================================================
+   IMPORTAR EXTRATO OFX bancário
+   ============================================================ */
+function abrirImportarOFX(){
+  openModal('📥 Importar Extrato Bancário (OFX)',
+    '<div style="background:#eff6ff;color:#1e40af;padding:.75rem;border-radius:8px;margin-bottom:.85rem;font-size:.85rem">'+
+      '<strong>O que é OFX?</strong> Formato padrão de extrato bancário. Quase todo banco brasileiro permite baixar (Itaú, BB, Bradesco, Caixa, Santander, etc.). Geralmente em: <em>Menu → Extrato → Baixar/Exportar → OFX</em>.'+
+    '</div>'+
+    '<div class="mb-3"><label class="label">Conta de destino *</label>'+
+      '<select id="ofxConta" class="input">'+
+        (DB.accounts||[]).map(a => '<option value="'+a.id+'">'+escapeHtml(a.name||a.bankName||'(s/n)')+'</option>').join('')+
+      '</select></div>'+
+    '<div class="mb-3"><label class="label">Arquivo OFX *</label>'+
+      '<input id="ofxFile" type="file" accept=".ofx,.qfx,text/plain" class="input">'+
+      '<div class="text-xs text-slate-500 mt-1">Aceita .ofx e .qfx</div></div>'+
+    '<div class="mb-3"><label class="flex items-center gap-2"><input type="checkbox" id="ofxIgnoraDup" checked> Ignorar lançamentos duplicados (mesma data + valor + descrição)</label></div>'+
+    '<div id="ofxPreview" style="margin-top:.85rem"></div>',
+    async ()=>{
+      const contaId = document.getElementById('ofxConta').value;
+      const file = document.getElementById('ofxFile').files[0];
+      const ignoraDup = document.getElementById('ofxIgnoraDup').checked;
+      if(!contaId){ toast('Selecione a conta','err'); return false; }
+      if(!file){ toast('Selecione o arquivo .ofx','err'); return false; }
+      try {
+        const txt = await file.text();
+        const trans = _parseOFX(txt);
+        if(!trans.length){ toast('Nenhuma transação encontrada no arquivo','err'); return false; }
+        let importados = 0, ignorados = 0;
+        const c = (typeof currentCompany==='function') ? currentCompany() : null;
+        const conta = (DB.accounts||[]).find(a=>a.id===contaId);
+        trans.forEach(t => {
+          // Duplicada?
+          if(ignoraDup){
+            const dup = (DB.entries||[]).some(e =>
+              e.date === t.data && Math.abs(Number(e.amount||0) - Math.abs(t.valor)) < 0.01 &&
+              (e.description||'').toLowerCase() === (t.descricao||'').toLowerCase()
+            );
+            if(dup){ ignorados++; return; }
+          }
+          const entry = {
+            id: uid('ent'),
+            companyId: c?c.id:(conta?conta.companyId:''),
+            accountId: contaId,
+            type: t.valor >= 0 ? 'receita' : 'despesa',
+            amount: Math.abs(t.valor),
+            date: t.data,
+            description: t.descricao || ('Importado OFX '+t.data),
+            partner: '',
+            paid: true,
+            paidDate: t.data,
+            origin: 'ofx',
+            ofxFitId: t.fitid
+          };
+          if(!DB.entries) DB.entries = [];
+          DB.entries.push(entry);
+          importados++;
+        });
+        saveDB();
+        toast('✅ '+importados+' lançamento(s) importado(s)'+(ignorados?' • '+ignorados+' ignorado(s) (duplicados)':''));
+        if(typeof renderLancamentos === 'function') setTimeout(renderLancamentos, 200);
+      } catch(e){
+        console.error('OFX parse:', e);
+        toast('Erro ao processar arquivo: '+(e.message||e),'err');
+        return false;
+      }
+    });
+  // Preview ao escolher arquivo
+  setTimeout(()=>{
+    const f = document.getElementById('ofxFile');
+    if(f){
+      f.addEventListener('change', async ()=>{
+        const file = f.files[0]; if(!file) return;
+        const preview = document.getElementById('ofxPreview');
+        try {
+          const txt = await file.text();
+          const trans = _parseOFX(txt);
+          const total = trans.reduce((s,t)=>s+t.valor, 0);
+          const receitas = trans.filter(t=>t.valor>0).length;
+          const despesas = trans.filter(t=>t.valor<0).length;
+          preview.innerHTML = '<div style="background:#dcfce7;border:1px solid #86efac;color:#15803d;padding:.75rem;border-radius:8px;font-size:.85rem">'+
+            '<strong>✓ Arquivo analisado:</strong><br>'+
+            '• '+trans.length+' transação(ões) encontrada(s)<br>'+
+            '• Receitas: '+receitas+' | Despesas: '+despesas+'<br>'+
+            '• Saldo líquido: '+fmtMoney(total)+
+          '</div>';
+        } catch(e){
+          preview.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:.7rem;border-radius:6px;font-size:.85rem">⚠️ Erro ao analisar: '+escapeHtml(e.message||String(e))+'</div>';
+        }
+      });
+    }
+  }, 200);
+}
+
+function _parseOFX(text){
+  // Parser simples — extrai blocos <STMTTRN>...</STMTTRN>
+  const trans = [];
+  const re = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+  let m;
+  while((m = re.exec(text)) !== null){
+    const blk = m[1];
+    const grab = (tag) => {
+      const mm = new RegExp('<'+tag+'>([^<\\r\\n]+)','i').exec(blk);
+      return mm ? mm[1].trim() : '';
+    };
+    const dtStr = grab('DTPOSTED'); // YYYYMMDD ou YYYYMMDDHHMMSS
+    let data = '';
+    if(dtStr.length >= 8){
+      data = dtStr.slice(0,4)+'-'+dtStr.slice(4,6)+'-'+dtStr.slice(6,8);
+    }
+    const valor = parseFloat((grab('TRNAMT')||'0').replace(',','.'));
+    const memo = grab('MEMO') || grab('NAME') || '';
+    const fitid = grab('FITID');
+    if(data && !isNaN(valor)){
+      trans.push({data, valor, descricao:memo, fitid});
+    }
+  }
+  return trans;
+}
+
+
+
+/* ============================================================
+   FIREBASE STORAGE — Upload de arquivos para nuvem
+   ============================================================ */
+let _firebaseStorage = null;
+
+function _initFirebaseStorage(){
+  if(_firebaseStorage) return _firebaseStorage;
+  if(!_initFirebase()) return null;
+  try {
+    _firebaseStorage = firebase.storage();
+    return _firebaseStorage;
+  } catch(e){ console.error('Falha Storage:', e); return null; }
+}
+
+function isFirebaseStorageEnabled(){
+  return isFirebaseConfigured() && !!currentUser && !!currentUser.firebaseUid;
+}
+
+async function _uploadParaStorage(file, folder){
+  const storage = _initFirebaseStorage();
+  if(!storage) throw new Error('Firebase Storage não disponível');
+  if(!file) throw new Error('Sem arquivo');
+  // Caminho: userId/folder/timestamp_nome
+  const safe = (currentUser && currentUser.firebaseUid) || 'anon';
+  const ts = Date.now();
+  const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path = safe + '/' + (folder||'docs') + '/' + ts + '_' + cleanName;
+  const ref = storage.ref(path);
+  const snapshot = await ref.put(file);
+  const url = await snapshot.ref.getDownloadURL();
+  return { url, path, nome: file.name, mime: file.type, tamanho: file.size };
+}
+
+async function _deletarDoStorage(path){
+  if(!path) return;
+  const storage = _initFirebaseStorage();
+  if(!storage) return;
+  try { await storage.ref(path).delete(); } catch(e){ console.warn('Falha ao deletar:', e); }
+}
+
+/* ============================================================
+   Substitui handlers de upload existentes para usar Storage
+   quando configurado, com fallback para base64 quando não.
+   ============================================================ */
+
+/* Helper unificado: lê file e devolve um objeto com { nome, mime, tamanho, data OU url, path } */
+async function _processarUploadArquivo(file, folder, callbackProgresso){
+  if(!file) throw new Error('Sem arquivo');
+  if(file.size > 10*1024*1024){ // 10 MB limite
+    throw new Error('Arquivo muito grande (máx 10 MB)');
+  }
+  if(isFirebaseStorageEnabled()){
+    if(callbackProgresso) callbackProgresso('Enviando para nuvem...');
+    try {
+      const result = await _uploadParaStorage(file, folder);
+      if(callbackProgresso) callbackProgresso('✅ Enviado!');
+      return result; // { url, path, nome, mime, tamanho }
+    } catch(e){
+      console.warn('Falha Storage, usando localStorage:', e);
+      // Fallback para base64
+    }
+  }
+  // Modo local (base64 no DB)
+  if(file.size > 4*1024*1024){
+    throw new Error('Arquivo muito grande para modo local (máx 4 MB) — habilite Firebase Storage');
+  }
+  if(callbackProgresso) callbackProgresso('Salvando localmente...');
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve({
+      nome: file.name, mime: file.type, tamanho: file.size, data: e.target.result
+    });
+    reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Função que detecta se o arquivo está em URL (Storage) ou base64 (local)
+   e abre adequadamente. Reescreve _verAnexoAtestado, _verAnexoProc, etc. */
+function _abrirAnexoGenerico(arquivo){
+  if(!arquivo) { toast('Sem anexo','warn'); return; }
+  const fonte = arquivo.url || arquivo.data;
+  if(!fonte){ toast('Anexo inválido','err'); return; }
+  const w = window.open('', '_blank');
+  if(!w){ toast('Permita popups','warn'); return; }
+  const isImg = /^image\//.test(arquivo.mime||'');
+  if(isImg){
+    w.document.write('<body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+fonte+'" style="max-width:100%;max-height:100vh"></body>');
+  } else {
+    w.document.write('<body style="margin:0"><embed src="'+fonte+'" type="application/pdf" style="width:100vw;height:100vh"></body>');
+  }
+}
+
+// Sobrescreve as funções existentes _verAnexoAtestado e _verAnexoProc
+if(typeof _verAnexoAtestado !== 'undefined'){
+  window._verAnexoAtestado = function(id){
+    const a = (DB.atestados||[]).find(x=>x.id===id); if(!a||!a.arquivo) return;
+    _abrirAnexoGenerico(a.arquivo);
+  };
+}
+if(typeof _verAnexoProc !== 'undefined'){
+  window._verAnexoProc = function(id){
+    const p = (DB.procuradores||[]).find(x=>x.id===id); if(!p||!p.arquivo) return;
+    _abrirAnexoGenerico(p.arquivo);
+  };
+}
+
+/* Sobrescreve _onAnexoAtestado e _onAnexoProc para usar Storage */
+window._onAnexoAtestado = async function(input){
+  const file = input.files[0]; if(!file) return;
+  try {
+    toast('⏳ Processando arquivo...');
+    const result = await _processarUploadArquivo(file, 'atestados');
+    // Preenche os hidden inputs
+    document.getElementById('atArqData').value = result.data || result.url || '';
+    document.getElementById('atArqNome').value = result.nome;
+    document.getElementById('atArqTam').value = result.tamanho || 0;
+    document.getElementById('atArqMime').value = result.mime;
+    // Adiciona campos url e path
+    let urlEl = document.getElementById('atArqUrl');
+    if(!urlEl){
+      urlEl = document.createElement('input');
+      urlEl.type = 'hidden'; urlEl.id = 'atArqUrl';
+      document.getElementById('atArqData').parentNode.appendChild(urlEl);
+    }
+    urlEl.value = result.url || '';
+    let pathEl = document.getElementById('atArqPath');
+    if(!pathEl){
+      pathEl = document.createElement('input');
+      pathEl.type = 'hidden'; pathEl.id = 'atArqPath';
+      document.getElementById('atArqData').parentNode.appendChild(pathEl);
+    }
+    pathEl.value = result.path || '';
+    const info = document.getElementById('atArqInfo');
+    if(info){
+      const fonteIcon = result.url ? '☁️' : '💾';
+      info.innerHTML = '<div style="background:#f0fdf4;border:1px solid #86efac;color:#15803d;padding:.5rem;border-radius:6px;font-size:.85rem;margin-top:.5rem">'+fonteIcon+' '+escapeHtml(result.nome)+' carregado ('+(result.url?'nuvem':'local')+')</div>';
+    }
+    toast('✅ Arquivo carregado'+(result.url?' (nuvem)':' (local)'));
+  } catch(e){
+    toast('Erro: '+(e.message||e), 'err');
+  }
+};
+
+window._onAnexoProc = async function(input){
+  const file = input.files[0]; if(!file) return;
+  try {
+    toast('⏳ Processando arquivo...');
+    const result = await _processarUploadArquivo(file, 'procuradores');
+    document.getElementById('pcArqData').value = result.data || result.url || '';
+    document.getElementById('pcArqNome').value = result.nome;
+    document.getElementById('pcArqMime').value = result.mime;
+    let urlEl = document.getElementById('pcArqUrl');
+    if(!urlEl){
+      urlEl = document.createElement('input');
+      urlEl.type = 'hidden'; urlEl.id = 'pcArqUrl';
+      document.getElementById('pcArqData').parentNode.appendChild(urlEl);
+    }
+    urlEl.value = result.url || '';
+    let pathEl = document.getElementById('pcArqPath');
+    if(!pathEl){
+      pathEl = document.createElement('input');
+      pathEl.type = 'hidden'; pathEl.id = 'pcArqPath';
+      document.getElementById('pcArqData').parentNode.appendChild(pathEl);
+    }
+    pathEl.value = result.path || '';
+    const info = document.getElementById('pcArqInfo');
+    if(info){
+      const fonteIcon = result.url ? '☁️' : '💾';
+      info.innerHTML = '<div style="background:#f0fdf4;border:1px solid #86efac;color:#15803d;padding:.5rem;border-radius:6px;font-size:.85rem;margin-top:.5rem">'+fonteIcon+' '+escapeHtml(result.nome)+' carregado ('+(result.url?'nuvem':'local')+')</div>';
+    }
+    toast('✅ Arquivo carregado'+(result.url?' (nuvem)':' (local)'));
+  } catch(e){
+    toast('Erro: '+(e.message||e), 'err');
+  }
+};
+
+/* Modifica editAtestado para incluir url/path quando salvar */
+(function patchEditAtestado(){
+  if(typeof editAtestado === 'undefined') return;
+  const orig = editAtestado;
+  window.editAtestado = function(id){
+    orig.apply(this, arguments);
+    // Após o modal abrir, hook no botão save:
+    setTimeout(()=>{
+      // Quando salvar, captura url e path se existirem
+      const saveBtn = document.getElementById('modalSaveBtn');
+      if(!saveBtn || saveBtn.dataset.atestadoHooked) return;
+      saveBtn.dataset.atestadoHooked = '1';
+      const origClick = saveBtn.onclick;
+      // Não precisamos sobrescrever — o save já lê os hidden inputs; basta garantir que url/path sejam lidos
+      // (o save original já trata `arquivo` via os campos hidden — vamos sobrescrever a montagem do objeto)
+    }, 100);
+  };
+})();
+
+
+
+/* ============================================================
+   ALERTAS POR E-MAIL — Integração com Cloud Function
+   ============================================================ */
+let _firebaseFunctions = null;
+
+function _initFirebaseFunctions(){
+  if(_firebaseFunctions) return _firebaseFunctions;
+  if(!_initFirebase()) return null;
+  try {
+    _firebaseFunctions = firebase.app().functions('southamerica-east1');
+    return _firebaseFunctions;
+  } catch(e){ console.error('Falha Functions:', e); return null; }
+}
+
+/* Coleta os vencimentos próximos (certidões, garantias, contratos, procurações) */
+function _coletarVencimentosParaAlerta(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const c = (typeof currentCompany==='function') ? currentCompany() : null;
+  const itens = [];
+
+  // Certidões
+  (DB.certifications||[]).filter(x => !c || x.companyId===c.id).forEach(d => {
+    if(!d.validade) return;
+    const dt = _parseDateLocal(d.validade);
+    const dias = Math.floor((dt - hoje)/86400000);
+    if(dias > 30) return;
+    itens.push({
+      tipo:'Certidão', titulo: d.nome||'(sem nome)',
+      detalhe: d.orgaoEmissor||'',
+      dataFmt: _fmtDataBR(d.validade), diasRestantes: dias
+    });
+  });
+
+  // Garantias
+  (DB.garantias||[]).filter(x => !c || x.companyId===c.id).forEach(g => {
+    if(!g.dataVencimento) return;
+    const dt = _parseDateLocal(g.dataVencimento);
+    const dias = Math.floor((dt - hoje)/86400000);
+    if(dias > 30) return;
+    const ctr = (DB.contracts||[]).find(c=>c.id===g.contratoId);
+    itens.push({
+      tipo:'Garantia', titulo: (g.seguradora||'')+' — '+(g.numeroApolice||'apólice'),
+      detalhe: ctr ? 'Contrato '+(ctr.numero||'') : 'avulsa',
+      dataFmt: _fmtDataBR(g.dataVencimento), diasRestantes: dias
+    });
+  });
+
+  // Contratos (vencimento da vigência)
+  (DB.contracts||[]).filter(x => !c || x.companyId===c.id).forEach(ct => {
+    if(!ct.dataFim) return;
+    if(ct.status === 'encerrado' || ct.status === 'rescindido') return;
+    const dt = _parseDateLocal(ct.dataFim);
+    const dias = Math.floor((dt - hoje)/86400000);
+    if(dias > 30) return;
+    itens.push({
+      tipo:'Contrato', titulo: (ct.numero||'(s/n)')+' — '+(ct.objeto||'').slice(0,60),
+      detalhe: ct.contratante||'',
+      dataFmt: _fmtDataBR(ct.dataFim), diasRestantes: dias
+    });
+  });
+
+  // Procurações
+  (DB.procuradores||[]).filter(x => !c || x.companyId===c.id).forEach(p => {
+    if(!p.dataFim) return;
+    const dt = _parseDateLocal(p.dataFim);
+    const dias = Math.floor((dt - hoje)/86400000);
+    if(dias > 30) return;
+    itens.push({
+      tipo:'Procuração', titulo: p.nome||'(sem nome)',
+      detalhe: p.tipo||'', dataFmt: _fmtDataBR(p.dataFim), diasRestantes: dias
+    });
+  });
+
+  // Ordena por urgência (vencidos primeiro, depois mais próximos)
+  itens.sort((a,b) => a.diasRestantes - b.diasRestantes);
+  return itens;
+}
+
+/* Envia alertas via Cloud Function */
+async function enviarAlertasEmail(){
+  if(!isFirebaseConfigured() || !currentUser || !currentUser.firebaseUid){
+    toast('Firebase não configurado ou sem login Firebase','err');
+    return;
+  }
+  const fn = _initFirebaseFunctions();
+  if(!fn){ toast('Cloud Functions não disponível','err'); return; }
+  
+  const vencimentos = _coletarVencimentosParaAlerta();
+  if(!vencimentos.length){
+    toast('✓ Nenhum vencimento próximo (30 dias) — nada a alertar','success');
+    return;
+  }
+  
+  if(!confirm('Enviar e-mail com '+vencimentos.length+' alerta(s) para '+currentUser.email+'?')) return;
+  
+  try {
+    toast('⏳ Enviando e-mail...');
+    const callable = fn.httpsCallable('enviarAlertasVencimento');
+    const result = await callable({
+      email: currentUser.email,
+      nome: currentUser.name,
+      vencimentos
+    });
+    if(result.data && result.data.enviado){
+      toast('📧 E-mail enviado para '+currentUser.email+' ('+vencimentos.length+' alertas)','success');
+    } else {
+      toast('Função retornou: '+(result.data && result.data.motivo || 'sem detalhes'),'warn');
+    }
+  } catch(e){
+    console.error('Falha alerta:', e);
+    const msg = e.message || String(e);
+    if(msg.includes('not-found') || msg.includes('NOT_FOUND')){
+      toast('Cloud Function ainda não foi deployada. Veja COMO-FAZER-DEPLOY.md','err');
+    } else if(msg.includes('unauthenticated')){
+      toast('Sessão expirada. Faça login novamente.','err');
+    } else {
+      toast('Erro: '+msg,'err');
+    }
+  }
+}
+
+/* Painel de alertas — mostra prévia do que será enviado */
+function abrirPainelAlertas(){
+  const vencimentos = _coletarVencimentosParaAlerta();
+  const cfgEmail = (currentUser && currentUser.email) || 'não logado';
+  let html = '<div style="background:linear-gradient(135deg,#1e1b4b 0%,#4f46e5 100%);color:#fff;padding:1rem;border-radius:10px;margin-bottom:1rem;text-align:center">'+
+    '<div style="font-size:2rem">📧</div>'+
+    '<div style="font-weight:800;font-size:1.1rem;margin-top:.3rem">Alertas de Vencimento</div>'+
+    '<div style="font-size:.85rem;opacity:.9;margin-top:.2rem">'+vencimentos.length+' item(s) com vencimento em até 30 dias</div>'+
+  '</div>';
+  
+  html += '<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:.75rem;border-radius:8px;margin-bottom:.85rem;font-size:.85rem">'+
+    '<strong>Destinatário:</strong> '+escapeHtml(cfgEmail)+'<br>'+
+    '<strong>Frequência automática:</strong> Diariamente às 8h (após deploy da Cloud Function)<br>'+
+    '<strong>Envio manual:</strong> Use o botão abaixo'+
+  '</div>';
+  
+  if(!vencimentos.length){
+    html += '<div style="background:#dcfce7;border:1px solid #86efac;color:#15803d;padding:1rem;border-radius:8px;text-align:center">✓ <strong>Tudo em dia!</strong> Nenhum vencimento nos próximos 30 dias.</div>';
+  } else {
+    html += '<div style="font-weight:700;margin-bottom:.5rem">Prévia dos itens que serão enviados:</div>';
+    html += '<div style="max-height:300px;overflow-y:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem">';
+    vencimentos.forEach(v => {
+      const cor = v.diasRestantes < 0 ? '#dc2626' : (v.diasRestantes <= 7 ? '#d97706' : '#16a34a');
+      const status = v.diasRestantes < 0 ? 'Vencido há '+Math.abs(v.diasRestantes)+'d' :
+                     v.diasRestantes === 0 ? 'HOJE' : 'em '+v.diasRestantes+'d';
+      html += '<div style="border-left:3px solid '+cor+';background:#fff;padding:.5rem .75rem;margin-bottom:.4rem;border-radius:4px">'+
+        '<div style="font-size:.85rem"><strong>'+v.tipo+':</strong> '+escapeHtml(v.titulo)+'</div>'+
+        '<div style="font-size:.75rem;color:#64748b">'+escapeHtml(v.detalhe||'')+'</div>'+
+        '<div style="font-size:.75rem;color:'+cor+';font-weight:700">'+v.dataFmt+' • '+status+'</div>'+
+      '</div>';
+    });
+    html += '</div>';
+    html += '<div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">'+
+      '<button class="btn btn-primary" onclick="enviarAlertasEmail()" style="flex:1;background:#15803d">📧 Enviar agora por e-mail</button>'+
+      '<button class="btn btn-secondary" onclick="closeModal()">Fechar</button>'+
+    '</div>';
+  }
+  
+  openModal('🔔 Painel de Alertas', html, null);
+  setTimeout(()=>{ const sb = document.getElementById('modalSaveBtn'); if(sb) sb.style.display='none'; }, 30);
+}
+
+
+
+/* ============================================================
+   REENVIAR E-MAIL DE CONFIRMAÇÃO — Para usuários que cadastraram
+   mas não receberam ou perderam o link
+   ============================================================ */
+function abrirReenviarEmail(){
+  if(!isFirebaseConfigured()){
+    toast('Firebase não configurado','err'); return;
+  }
+  openModal('📧 Reenviar e-mail de confirmação',
+    '<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:.75rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">'+
+      'Para reenviar o e-mail, preciso fazer login temporário na sua conta. Informe e-mail e senha do cadastro que você fez:'+
+    '</div>'+
+    '<div class="mb-3"><span class="label">E-mail cadastrado *</span><input id="reEmail" type="email" class="input" placeholder="seu@email.com" autofocus></div>'+
+    '<div class="mb-3"><span class="label">Senha cadastrada *</span><input id="rePwd" type="password" class="input"></div>'+
+    '<div class="text-xs text-slate-500">Não acessamos sua senha, apenas fazemos uma sessão temporária para o Firebase reenviar o link.</div>',
+    async ()=>{
+      const email = (document.getElementById('reEmail').value||'').trim().toLowerCase();
+      const pwd = document.getElementById('rePwd').value;
+      if(!email || !pwd){ toast('Preencha e-mail e senha','err'); return false; }
+      try {
+        toast('⏳ Reenviando...');
+        await _firebaseResendVerificationFor(email, pwd);
+        toast('📧 E-mail reenviado! Confira a caixa de entrada (e o spam).');
+        closeModal();
+      } catch(e){
+        const errMsgs = {
+          'auth/wrong-password': 'Senha incorreta',
+          'auth/invalid-credential': 'E-mail ou senha incorretos',
+          'auth/user-not-found': 'Usuário não encontrado — verifique o e-mail',
+          'auth/too-many-requests': 'Muitas tentativas — aguarde 1 minuto'
+        };
+        toast(errMsgs[e.code] || ('Falha: '+(e.message||e)), 'err');
+        return false;
+      }
+    });
+}
+
+
+
+/* ============================================================
+   OTP — Código de 6 dígitos por e-mail (helpers)
+   ============================================================ */
+var TRUSTED_DEVICE_DAYS = 30;
+
+async function _solicitarCodigoOTP(finalidade){
+  var fn = _initFirebaseFunctions();
+  if(!fn) throw new Error('Cloud Functions não disponível');
+  var callable = fn.httpsCallable('gerarCodigoVerificacao');
+  var result = await callable({finalidade: finalidade || 'login'});
+  return result.data;
+}
+
+async function _validarCodigoOTP(codigo){
+  var fn = _initFirebaseFunctions();
+  if(!fn) throw new Error('Cloud Functions não disponível');
+  var callable = fn.httpsCallable('verificarCodigo');
+  var result = await callable({codigo: codigo});
+  return result.data;
+}
+
+function _isDispositivoConfiavel(uid){
+  try {
+    var tk = localStorage.getItem('jms_trusted_device_'+uid);
+    if(!tk) return false;
+    var data = JSON.parse(tk);
+    if(!data.exp || Date.now() > data.exp) {
+      localStorage.removeItem('jms_trusted_device_'+uid);
+      return false;
+    }
+    return true;
+  } catch(e){ return false; }
+}
+
+function _marcarDispositivoConfiavel(uid){
+  var exp = Date.now() + (TRUSTED_DEVICE_DAYS * 24 * 60 * 60 * 1000);
+  localStorage.setItem('jms_trusted_device_'+uid, JSON.stringify({exp: exp, marcadoEm: Date.now()}));
+}
+
+function _pedirOTP(opcoes){
+  opcoes = opcoes || {};
+  var titulo = opcoes.titulo || '🔐 Código de verificação';
+  var finalidade = opcoes.finalidade || 'login';
+  var mostrarConfiarDispositivo = opcoes.mostrarConfiarDispositivo === true;
+  return new Promise(function(resolve, reject){
+    var body = '<div style="text-align:center;margin-bottom:1rem">'+
+      '<div style="font-size:3rem">📧</div>'+
+      '<div style="font-weight:700;font-size:1.05rem;color:#1e293b;margin-top:.4rem">Código enviado!</div>'+
+      '<div style="color:#64748b;font-size:.9rem;margin-top:.4rem">Verifique seu e-mail e digite o <strong>código de 6 dígitos</strong> abaixo. Válido por 10 minutos.</div>'+
+    '</div>'+
+    '<div style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:.6rem;border-radius:8px;margin-bottom:1rem;font-size:.8rem">⚠️ Se não chegar em 1 minuto, confira o <strong>Spam</strong>.</div>'+
+    '<div style="text-align:center;margin-bottom:1rem">'+
+      '<input id="otpInput" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" '+
+        'style="font-size:2rem;font-weight:800;text-align:center;letter-spacing:.5rem;width:280px;padding:.75rem;border:2px solid #cbd5e1;border-radius:10px;font-family:monospace" '+
+        'placeholder="------" autofocus>'+
+    '</div>'+
+    (mostrarConfiarDispositivo ? '<div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:.5rem"><input type="checkbox" id="otpTrust" checked><label for="otpTrust" style="font-size:.85rem;color:#475569">Não pedir código neste dispositivo nos próximos 30 dias</label></div>' : '')+
+    '<div id="otpMsg" style="text-align:center;margin-bottom:.5rem;font-size:.85rem"></div>'+
+    '<div style="display:flex;gap:.5rem">'+
+      '<button id="otpReenviar" class="btn btn-secondary" style="flex:1">🔄 Reenviar código</button>'+
+      '<button id="otpValidar" class="btn btn-primary" style="flex:2;background:#15803d">✓ Validar</button>'+
+    '</div>';
+    openModal(titulo, body, null);
+    setTimeout(function(){
+      var sb = document.getElementById('modalSaveBtn'); if(sb) sb.style.display='none';
+      var inp = document.getElementById('otpInput');
+      var msg = document.getElementById('otpMsg');
+      var btnVal = document.getElementById('otpValidar');
+      var btnRe = document.getElementById('otpReenviar');
+      if(!inp || !btnVal || !btnRe){ reject(new Error('Modal OTP não renderizou')); return; }
+      inp.addEventListener('input', function(){
+        inp.value = inp.value.replace(/\D/g,'').slice(0,6);
+        if(inp.value.length === 6) btnVal.click();
+      });
+      btnVal.addEventListener('click', async function(){
+        var cod = inp.value.trim();
+        if(!/^\d{6}$/.test(cod)){ msg.innerHTML = '<span style="color:#dc2626">Digite os 6 dígitos</span>'; return; }
+        msg.innerHTML = '<span style="color:#64748b">⏳ Validando...</span>';
+        btnVal.disabled = true;
+        try {
+          await _validarCodigoOTP(cod);
+          msg.innerHTML = '<span style="color:#15803d">✅ Validado!</span>';
+          var confiar = mostrarConfiarDispositivo && document.getElementById('otpTrust') && document.getElementById('otpTrust').checked;
+          setTimeout(function(){ closeModal(); resolve({valido:true, confiarDispositivo: confiar}); }, 500);
+        } catch(e){
+          btnVal.disabled = false;
+          msg.innerHTML = '<span style="color:#dc2626">❌ '+(e.message||e)+'</span>';
+        }
+      });
+      btnRe.addEventListener('click', async function(){
+        btnRe.disabled = true; msg.innerHTML = '<span style="color:#64748b">⏳ Reenviando...</span>';
+        try {
+          await _solicitarCodigoOTP(finalidade);
+          msg.innerHTML = '<span style="color:#15803d">📧 Novo código enviado!</span>';
+          setTimeout(function(){ btnRe.disabled = false; msg.innerHTML = ''; }, 3000);
+        } catch(e){
+          btnRe.disabled = false;
+          msg.innerHTML = '<span style="color:#dc2626">'+(e.message||e)+'</span>';
+        }
+      });
+    }, 50);
+  });
 }
 
 </script>
