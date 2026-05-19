@@ -22277,7 +22277,7 @@ function showFirebaseSetup(){
     '</div>'+
     '<hr style="margin:1rem 0;border:0;border-top:1px solid #e2e8f0">'+
     '<div class="grid-2 mb-3">'+
-      '<div><label class="label">API Key *</label><input id="fbApiKey" class="input" value="'+escapeHtml(cfg.apiKey||'AIzaSyDeid2Ks0X6Uh8rchJTt3yxoC-IvR5Kvss')+'"></div>'+
+      '<div><label class="label">API Key *</label><input id="fbApiKey" class="input" value="'+escapeHtml(cfg.apiKey||'')+'"></div>'+
       '<div><label class="label">Project ID *</label><input id="fbProjectId" class="input" value="'+escapeHtml(cfg.projectId||'jms-gestao')+'"></div>'+
     '</div>'+
     '<div class="grid-2 mb-3">'+
@@ -22891,11 +22891,16 @@ async function doRegister(){
       toast('📧 Cadastro criado — confirme seu e-mail');
       return;
     } catch(e){
+      // E-mail já cadastrado — modal grande, mais visível e útil
+      if(e.code === 'auth/email-already-in-use'){
+        _mostrarEmailJaCadastrado(email);
+        return;
+      }
       const errMsgs = {
-        'auth/email-already-in-use': 'E-mail já cadastrado. Use "Esqueci minha senha" se for sua conta.',
-        'auth/invalid-email': 'E-mail inválido',
+        'auth/invalid-email': 'E-mail inválido — verifique o formato (exemplo@dominio.com)',
         'auth/weak-password': 'Senha muito fraca — use ao menos 6 caracteres',
-        'auth/operation-not-allowed': 'Cadastro por e-mail não habilitado no Firebase'
+        'auth/operation-not-allowed': 'Cadastro por e-mail não habilitado no Firebase',
+        'auth/too-many-requests': 'Muitas tentativas — aguarde alguns minutos'
       };
       toast(errMsgs[e.code] || ('Falha no cadastro: '+(e.message||e)),'err');
       return;
@@ -33019,6 +33024,34 @@ function _pedirOTP(opcoes){
     }, 50);
   });
 }
+
+
+/* Modal grande para "e-mail já cadastrado" — UX clara com 3 ações úteis */
+function _mostrarEmailJaCadastrado(email){
+  const body = '<div style="text-align:center;margin-bottom:1rem">'+
+    '<div style="font-size:3rem">⚠️</div>'+
+    '<div style="font-weight:800;font-size:1.15rem;color:#dc2626;margin-top:.5rem">Este e-mail já está cadastrado</div>'+
+    '<div style="color:#475569;font-size:.9rem;margin-top:.4rem">O e-mail <strong>'+escapeHtml(email)+'</strong> já tem uma conta no sistema.</div>'+
+  '</div>'+
+  '<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:.85rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">'+
+    '<strong>💡 O que você pode fazer:</strong><br>'+
+    '• <strong>Fazer login</strong> se esta conta é sua<br>'+
+    '• <strong>Recuperar a senha</strong> se esqueceu<br>'+
+    '• <strong>Usar outro e-mail</strong> para criar nova conta'+
+  '</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">'+
+    '<button class="btn btn-primary" onclick="closeModal();authShowTab(\'login\');setTimeout(function(){var el=document.getElementById(\'liIdent\');if(el){el.value=\''+email.replace(/'/g,"\\'")+'\';el.focus();var el2=document.getElementById(\'liPwd\');if(el2)el2.focus();}},200)" style="background:#15803d">🔓 Fazer Login</button>'+
+    '<button class="btn btn-secondary" onclick="closeModal();setTimeout(forgotPwd,200)" style="background:#d97706;color:#fff">🔑 Recuperar Senha</button>'+
+  '</div>'+
+  '<div style="text-align:center;margin-top:.5rem">'+
+    '<button class="btn btn-ghost" onclick="closeModal()" style="font-size:.85rem;color:#64748b">Voltar e usar outro e-mail</button>'+
+  '</div>';
+  openModal('⚠️ E-mail já cadastrado', body, null);
+  setTimeout(function(){
+    const sb = document.getElementById('modalSaveBtn'); if(sb) sb.style.display='none';
+  }, 30);
+}
+
 
 </script>
 </body>
