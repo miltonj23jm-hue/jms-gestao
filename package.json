@@ -1,0 +1,13 @@
+{
+  "name": "jms-gestao-empresarial",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema JMS Gestão Empresarial publicado a partir da pasta outputs.",
+  "scripts": {
+    "deploy:firebase": "firebase deploy --only hosting",
+    "deploy:firebase:all": "firebase deploy",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:vercel": "vercel deploy --prod",
+    "open": "start outputs/index.html"
+  }
+}
