@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>JMS — Catálogo de Tipografias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;700;800&family=Outfit:wght@300;700;900&family=Manrope:wght@400;700;800&family=DM+Sans:wght@400;700&family=Space+Grotesk:wght@400;700&family=Sora:wght@400;700;800&family=Bricolage+Grotesque:wght@400;700;800&family=Syne:wght@500;700;800&family=Unbounded:wght@400;700;800&family=Poppins:wght@400;700;800&family=Montserrat:wght@400;700;900&family=Onest:wght@400;700;800&family=Archivo:wght@400;700;800&family=Urbanist:wght@400;700;800&family=Lexend:wght@400;700;800&family=Albert+Sans:wght@400;700;800&family=Anton&family=Bebas+Neue&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@500;700;900&family=Fraunces:wght@400;700;900&family=Cormorant+Garamond:wght@500;700&family=Big+Shoulders+Display:wght@500;700;900&family=Bungee&family=Russo+One&family=Rubik:wght@400;700;900&family=Barlow:wght@400;700;900&family=Work+Sans:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a1428;color:#fff;font-family:Inter,system-ui,sans-serif;min-height:100vh}
+  .header{background:linear-gradient(135deg,#4f46e5 0%,#312e81 50%,#1e1b4b 100%);padding:2rem 1.5rem;text-align:center;border-bottom:1px solid rgba(255,255,255,.1)}
+  .header h1{margin:0 0 .5rem;font-size:1.6rem;font-weight:700;letter-spacing:-.02em}
+  .header p{margin:0;opacity:.85;font-size:.92rem;max-width:680px;margin-inline:auto}
+  .grid{max-width:1280px;margin:2rem auto;padding:0 1rem;display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+  .card{background:#1e293b;border:1.5px solid #334155;border-radius:14px;padding:1.5rem;transition:all .25s}
+  .card:hover{border-color:#67e8f9;transform:translateY(-3px);box-shadow:0 10px 28px rgba(103,232,249,.2)}
+  .card-num{display:inline-block;background:#4f46e5;color:#fff;padding:.3rem .9rem;border-radius:999px;font-size:.78rem;font-weight:700;letter-spacing:.05em}
+  .card-fontname{display:inline-block;margin-left:.7rem;font-size:.75rem;letter-spacing:.18em;color:#67e8f9;text-transform:uppercase;font-weight:600}
+  .card-tag{display:inline-block;margin-left:auto;font-size:.7rem;color:#94a3b8;background:rgba(148,163,184,.12);padding:.2rem .6rem;border-radius:6px}
+  .card-head{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:1.25rem}
+  .preview{background:linear-gradient(135deg,#1e1b4b 0%,#4f46e5 100%);border-radius:10px;padding:1.5rem 1.25rem;text-align:center;margin-bottom:1rem;overflow:hidden}
+  .jms-big{color:#fff;font-size:5rem;font-weight:800;line-height:.85;letter-spacing:-.05em;display:block;margin-bottom:.4rem}
+  .gestao-line{color:#fff;font-weight:500;font-size:1.1rem;letter-spacing:.05em;text-transform:uppercase;border-top:1.5px solid rgba(255,255,255,.45);padding-top:.5rem;margin-top:.4rem;display:inline-block;min-width:180px}
+  .glifos{background:#0f172a;border:1px dashed #334155;border-radius:8px;padding:.85rem;display:flex;justify-content:space-between;font-size:1.6rem;color:#cbd5e1;font-weight:500;margin-bottom:.6rem}
+  .glifos span{display:inline-block;flex:1;text-align:center}
+  .alpha{font-size:.85rem;color:#94a3b8;font-weight:400;letter-spacing:.02em;text-align:center}
+  .footer{text-align:center;padding:2.5rem 1rem;color:#94a3b8;font-size:.95rem}
+  .footer code{background:#1e293b;padding:.3rem .8rem;border-radius:6px;color:#67e8f9;font-family:'JetBrains Mono',ui-monospace,monospace;border:1px solid #334155}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>JMS Gestão Empresarial — 28 Tipografias</h1>
+  <p>Cada cartão mostra a marca + amostras de glifos distintivos (a, g, R, @, 1) e o alfabeto. Quando achar a sua, me fala o número.</p>
+</div>
+
+<div class="grid">
+
+<!-- 1. Plus Jakarta Sans -->
+<div class="card">
+  <div class="card-head"><span class="card-num">1</span><span class="card-fontname">Plus Jakarta Sans</span><span class="card-tag">atual • SaaS</span></div>
+  <div class="preview" style="font-family:'Plus Jakarta Sans',sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Plus Jakarta Sans',sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Plus Jakarta Sans',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 2. Inter -->
+<div class="card">
+  <div class="card-head"><span class="card-num">2</span><span class="card-fontname">Inter</span><span class="card-tag">neutra</span></div>
+  <div class="preview" style="font-family:Inter,sans-serif">
+    <span class="jms-big" style="font-weight:900">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Inter,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Inter,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 3. Outfit -->
+<div class="card">
+  <div class="card-head"><span class="card-num">3</span><span class="card-fontname">Outfit</span><span class="card-tag">premium</span></div>
+  <div class="preview" style="font-family:Outfit,sans-serif">
+    <span class="jms-big" style="font-weight:900;letter-spacing:-.07em">jms</span>
+    <div class="gestao-line" style="font-weight:300;letter-spacing:.15em">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Outfit,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Outfit,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 4. Manrope -->
+<div class="card">
+  <div class="card-head"><span class="card-num">4</span><span class="card-fontname">Manrope</span><span class="card-tag">elegante</span></div>
+  <div class="preview" style="font-family:Manrope,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Manrope,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Manrope,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 5. DM Sans -->
+<div class="card">
+  <div class="card-head"><span class="card-num">5</span><span class="card-fontname">DM Sans</span><span class="card-tag">amigável</span></div>
+  <div class="preview" style="font-family:'DM Sans',sans-serif">
+    <span class="jms-big" style="font-weight:700">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'DM Sans',sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'DM Sans',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 6. Space Grotesk -->
+<div class="card">
+  <div class="card-head"><span class="card-num">6</span><span class="card-fontname">Space Grotesk</span><span class="card-tag">retrô-futurista</span></div>
+  <div class="preview" style="font-family:'Space Grotesk',sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Space Grotesk',sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Space Grotesk',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 7. Sora -->
+<div class="card">
+  <div class="card-head"><span class="card-num">7</span><span class="card-fontname">Sora</span><span class="card-tag">tech</span></div>
+  <div class="preview" style="font-family:Sora,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Sora,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Sora,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 8. Bricolage Grotesque -->
+<div class="card">
+  <div class="card-head"><span class="card-num">8</span><span class="card-fontname">Bricolage Grotesque</span><span class="card-tag">editorial</span></div>
+  <div class="preview" style="font-family:'Bricolage Grotesque',sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Bricolage Grotesque',sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Bricolage Grotesque',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 9. Syne -->
+<div class="card">
+  <div class="card-head"><span class="card-num">9</span><span class="card-fontname">Syne</span><span class="card-tag">display</span></div>
+  <div class="preview" style="font-family:Syne,sans-serif">
+    <span class="jms-big" style="font-weight:800">jms</span>
+    <div class="gestao-line" style="font-weight:500">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Syne,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Syne,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 10. Unbounded -->
+<div class="card">
+  <div class="card-head"><span class="card-num">10</span><span class="card-fontname">Unbounded</span><span class="card-tag">display condensada</span></div>
+  <div class="preview" style="font-family:Unbounded,sans-serif">
+    <span class="jms-big" style="font-weight:800">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Unbounded,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Unbounded,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 11. Poppins -->
+<div class="card">
+  <div class="card-head"><span class="card-num">11</span><span class="card-fontname">Poppins</span><span class="card-tag">geométrica</span></div>
+  <div class="preview" style="font-family:Poppins,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Poppins,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Poppins,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 12. Montserrat -->
+<div class="card">
+  <div class="card-head"><span class="card-num">12</span><span class="card-fontname">Montserrat</span><span class="card-tag">clássica</span></div>
+  <div class="preview" style="font-family:Montserrat,sans-serif">
+    <span class="jms-big" style="font-weight:900">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Montserrat,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Montserrat,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 13. Onest -->
+<div class="card">
+  <div class="card-head"><span class="card-num">13</span><span class="card-fontname">Onest</span><span class="card-tag">angular</span></div>
+  <div class="preview" style="font-family:Onest,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Onest,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Onest,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 14. Archivo -->
+<div class="card">
+  <div class="card-head"><span class="card-num">14</span><span class="card-fontname">Archivo</span><span class="card-tag">industrial</span></div>
+  <div class="preview" style="font-family:Archivo,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Archivo,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Archivo,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 15. Urbanist -->
+<div class="card">
+  <div class="card-head"><span class="card-num">15</span><span class="card-fontname">Urbanist</span><span class="card-tag">refinada</span></div>
+  <div class="preview" style="font-family:Urbanist,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Urbanist,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Urbanist,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 16. Lexend -->
+<div class="card">
+  <div class="card-head"><span class="card-num">16</span><span class="card-fontname">Lexend</span><span class="card-tag">legível</span></div>
+  <div class="preview" style="font-family:Lexend,sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Lexend,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Lexend,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 17. Albert Sans -->
+<div class="card">
+  <div class="card-head"><span class="card-num">17</span><span class="card-fontname">Albert Sans</span><span class="card-tag">premium</span></div>
+  <div class="preview" style="font-family:'Albert Sans',sans-serif">
+    <span class="jms-big">jms</span>
+    <div class="gestao-line">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Albert Sans',sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Albert Sans',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 18. Anton -->
+<div class="card">
+  <div class="card-head"><span class="card-num">18</span><span class="card-fontname">Anton</span><span class="card-tag">DISPLAY • condensada</span></div>
+  <div class="preview" style="font-family:Anton,sans-serif">
+    <span class="jms-big" style="font-size:6rem;letter-spacing:-.02em">JMS</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Anton,sans-serif"><span>A</span><span>G</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Anton,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • 0123456</div>
+</div>
+
+<!-- 19. Bebas Neue -->
+<div class="card">
+  <div class="card-head"><span class="card-num">19</span><span class="card-fontname">Bebas Neue</span><span class="card-tag">DISPLAY • caps</span></div>
+  <div class="preview" style="font-family:'Bebas Neue',sans-serif">
+    <span class="jms-big" style="font-size:6rem;letter-spacing:.04em">JMS</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Bebas Neue',sans-serif"><span>A</span><span>G</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Bebas Neue',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • 0123456</div>
+</div>
+
+<!-- 20. Oswald -->
+<div class="card">
+  <div class="card-head"><span class="card-num">20</span><span class="card-fontname">Oswald</span><span class="card-tag">DISPLAY • magazine</span></div>
+  <div class="preview" style="font-family:Oswald,sans-serif">
+    <span class="jms-big" style="font-weight:700;letter-spacing:0">JMS</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Oswald,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Oswald,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • 0123456</div>
+</div>
+
+<!-- 21. Russo One -->
+<div class="card">
+  <div class="card-head"><span class="card-num">21</span><span class="card-fontname">Russo One</span><span class="card-tag">DISPLAY • robusta</span></div>
+  <div class="preview" style="font-family:'Russo One',sans-serif">
+    <span class="jms-big" style="letter-spacing:-.02em">JMS</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Russo One',sans-serif"><span>A</span><span>G</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Russo One',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • 0123456</div>
+</div>
+
+<!-- 22. Big Shoulders Display -->
+<div class="card">
+  <div class="card-head"><span class="card-num">22</span><span class="card-fontname">Big Shoulders Display</span><span class="card-tag">DISPLAY • forte</span></div>
+  <div class="preview" style="font-family:'Big Shoulders Display',sans-serif">
+    <span class="jms-big" style="font-weight:900;letter-spacing:-.02em">JMS</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Big Shoulders Display',sans-serif"><span>A</span><span>G</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Big Shoulders Display',sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • 0123456</div>
+</div>
+
+<!-- 23. Bungee -->
+<div class="card">
+  <div class="card-head"><span class="card-num">23</span><span class="card-fontname">Bungee</span><span class="card-tag">DISPLAY • urbana</span></div>
+  <div class="preview" style="font-family:Bungee,sans-serif">
+    <span class="jms-big" style="font-size:4.5rem;letter-spacing:-.02em">JMS</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Bungee,sans-serif"><span>A</span><span>G</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Bungee,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • 0123456</div>
+</div>
+
+<!-- 24. Pacifico -->
+<div class="card">
+  <div class="card-head"><span class="card-num">24</span><span class="card-fontname">Pacifico</span><span class="card-tag">SCRIPT • cursiva</span></div>
+  <div class="preview" style="font-family:Pacifico,cursive">
+    <span class="jms-big" style="font-weight:400;letter-spacing:0">jms</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Pacifico,cursive"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Pacifico,cursive">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 25. Playfair Display -->
+<div class="card">
+  <div class="card-head"><span class="card-num">25</span><span class="card-fontname">Playfair Display</span><span class="card-tag">SERIF • luxo</span></div>
+  <div class="preview" style="font-family:'Playfair Display',serif">
+    <span class="jms-big" style="font-weight:900;font-style:italic">jms</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Playfair Display',serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Playfair Display',serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 26. Fraunces -->
+<div class="card">
+  <div class="card-head"><span class="card-num">26</span><span class="card-fontname">Fraunces</span><span class="card-tag">SERIF • moderna</span></div>
+  <div class="preview" style="font-family:Fraunces,serif">
+    <span class="jms-big" style="font-weight:900">jms</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Fraunces,serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Fraunces,serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 27. Cormorant Garamond -->
+<div class="card">
+  <div class="card-head"><span class="card-num">27</span><span class="card-fontname">Cormorant Garamond</span><span class="card-tag">SERIF • clássica</span></div>
+  <div class="preview" style="font-family:'Cormorant Garamond',serif">
+    <span class="jms-big" style="font-weight:700;font-style:italic">jms</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:'Cormorant Garamond',serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:'Cormorant Garamond',serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+<!-- 28. Geist -->
+<div class="card">
+  <div class="card-head"><span class="card-num">28</span><span class="card-fontname">Rubik</span><span class="card-tag">arredondada</span></div>
+  <div class="preview" style="font-family:Rubik,sans-serif">
+    <span class="jms-big" style="font-weight:900">jms</span>
+    <div class="gestao-line" style="font-family:Inter,sans-serif">gestão empresarial</div>
+  </div>
+  <div class="glifos" style="font-family:Rubik,sans-serif"><span>a</span><span>g</span><span>R</span><span>@</span><span>1</span></div>
+  <div class="alpha" style="font-family:Rubik,sans-serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ • abcdefghij</div>
+</div>
+
+</div>
+
+<div class="footer">
+  Quando achar a sua, me diga: <code>aplicar tipografia 18</code> (por exemplo).<br>
+  <span style="font-size:.8rem;color:#64748b;margin-top:.5rem;display:block">As fontes 18-23 são <strong>display</strong> (impacto), 24 é <strong>script</strong> (cursiva) e 25-27 são <strong>serif</strong> (clássica/luxo) — bem diferentes das 1-17 que são todas sans-serif geométricas.</span>
+</div>
+
+</body>
+</html>
