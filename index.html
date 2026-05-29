@@ -1197,9 +1197,9 @@ input.flatpickr-input:not(.flatpickr-alt-input):not([type="date"]) { display: no
             var link = document.getElementById('authFirebaseSetupLink');
             if(!link) return;
             try {
-              var cfg = JSON.parse(localStorage.getItem('jms_firebase_config')||'{}');
-              link.style.display = (cfg.apiKey && cfg.projectId) ? 'none' : 'block';
-            } catch(e){ link.style.display = 'block'; }
+              var ok = (typeof isFirebaseConfigured === 'function') ? isFirebaseConfigured() : true;
+              link.style.display = ok ? 'none' : 'block';
+            } catch(e){ link.style.display = 'none'; }
           };
           checkFn();
           // Re-checa periodicamente caso o usuário reconfigure
@@ -1352,17 +1352,9 @@ input.flatpickr-input:not(.flatpickr-alt-input):not([type="date"]) { display: no
 
 const STORAGE_KEY = 'gestao360_v1';
 
-/* RESET AUTOMÁTICO ÚNICO — apaga dados existentes para iniciar testes do zero.
-   Roda apenas uma vez (na próxima abertura). Após isso, fica permanentemente desativado. */
-(function autoResetForTest(){
-  const RESET_MARKER = 'jms_reset_2026_04_29_b';
-  if(!localStorage.getItem(RESET_MARKER)){
-    localStorage.removeItem('gestao360_v1');
-    localStorage.removeItem('jms_last_user_v1');
-    try{ sessionStorage.removeItem('jms_session_v1'); }catch(e){}
-    localStorage.setItem(RESET_MARKER, '1');
-  }
-})();
+/* Proteção de dados: resets automáticos de teste ficam desativados em produção.
+   Limpeza total deve passar pelo botão "Apagar tudo", com confirmação explícita. */
+const AUTO_RESET_FOR_TESTS = false;
 
 /* Logo JMS Gestão Empresarial — SVG inline (gráfico crescente + moeda $) */
 const JMS_LOGO_SVG = `
@@ -1661,9 +1653,28 @@ function _sortCompaniesAlphabetically(){
   );
 }
 
+function safeLocalSetItem(key, value){
+  try{
+    localStorage.setItem(key, value);
+    return true;
+  }catch(err){
+    console.error('Falha ao salvar dados locais:', err);
+    const quotaMsg = err && (err.name==='QuotaExceededError' || err.code===22)
+      ? '\n\nO armazenamento do navegador parece estar cheio. Exporte um backup JSON e remova anexos/imagens muito grandes.'
+      : '';
+    alert('Não foi possível salvar os dados no navegador.'+quotaMsg+'\n\nDetalhe: '+(err && err.message ? err.message : err));
+    try{ toast('Falha ao salvar dados locais','err'); }catch(_){}
+    return false;
+  }
+}
+
 function saveDB(){
   _sortCompaniesAlphabetically();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+  if(typeof ensureRecordTimestamps === 'function') ensureRecordTimestamps(DB);
+  const ok = safeLocalSetItem(STORAGE_KEY, JSON.stringify(DB));
+  if(ok && typeof markLocalDataChanged === 'function') markLocalDataChanged('saveDB');
+  if(ok && !window._suppressCloudSync && typeof scheduleSupabaseAutoSync === 'function') scheduleSupabaseAutoSync('saveDB');
+  return ok;
 }
 function uid(prefix='id'){ return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7); }
 
@@ -17840,12 +17851,26 @@ function renderConfig(){
     body = `
       <div class="card">
         <div class="font-semibold text-slate-800 mb-3">Backup e restauração</div>
+        <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <strong>Importante:</strong> os dados principais ainda ficam neste navegador. Gere backup JSON com frequência, especialmente antes de importar arquivos, apagar dados ou trocar de computador.
+          <div class="mt-1 text-xs">${lastBackupLabel()}</div>
+          <div class="mt-1 text-xs">${safetySnapshotLabel()}</div>
+        </div>
+        ${systemHealthHTML()}
+        ${storageHealthHTML()}
+        ${dataSummaryHTML()}
+        <div class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div class="font-semibold text-slate-800">Caches temporários</div>
+          <div class="text-xs mt-1">${tempCacheLabel()}</div>
+          <button class="btn btn-secondary text-xs mt-2" onclick="clearTempCaches()">Limpar caches de consultas</button>
+        </div>
         <div class="flex gap-2 flex-wrap">
           <button class="btn btn-secondary" onclick="exportBackup()">💾 Exportar JSON</button>
           <label class="btn btn-secondary cursor-pointer">
             📥 Importar JSON
             <input type="file" accept=".json" hidden onchange="importBackup(event)">
           </label>
+          <button class="btn btn-secondary" onclick="restoreSafetySnapshot()">↩️ Restaurar emergência</button>
           <button class="btn btn-danger" onclick="resetSystem()">🗑️ Apagar tudo</button>
         </div>
         <p class="text-xs text-slate-400 mt-3">Os dados ficam apenas neste navegador. Exporte um backup periodicamente para evitar perda.</p>
@@ -17872,16 +17897,38 @@ function renderConfig(){
           </ol>
         </div>
         <div class="grid-2 mb-2">
-          <div><span class="label">Project URL</span><input id="sbUrl" class="input" placeholder="https://xxxxx.supabase.co" value="${escapeHtml(cfgSb.url||'https://dxnoyvkvcwjfvttcnsay.supabase.co')}"></div>
-          <div><span class="label">Publishable / Anon Key</span><input id="sbAnonKey" class="input" type="password" placeholder="sb_publishable_... ou eyJhbGc..." value="${escapeHtml(cfgSb.anonKey||'sb_publishable_EmT2OBjaOt0lSjMA9Hixfw_qfBokZjz')}"></div>
+          <div><span class="label">Project URL</span><input id="sbUrl" class="input" placeholder="https://xxxxx.supabase.co" value="${escapeHtml(cfgSb.url||'')}"></div>
+          <div><span class="label">Publishable / Anon Key</span><input id="sbAnonKey" class="input" type="password" placeholder="sb_publishable_... ou eyJhbGc..." value="${escapeHtml(cfgSb.anonKey||'')}"></div>
         </div>
         <div class="flex gap-2 flex-wrap mb-2">
           <button class="btn btn-primary" onclick="saveSupabaseConfigFromUI()">💾 Salvar</button>
           <button class="btn btn-secondary" onclick="testarSupabase()" ${sbOk?'':'disabled'}>🔌 Testar conexão</button>
+          <button class="btn btn-secondary" onclick="migrarDadosParaSupabase()" ${sbOk?'':'disabled'} title="Envia o banco local inteiro como snapshot seguro na nuvem">☁️ Migrar dados locais</button>
+          <button class="btn btn-secondary" onclick="restaurarDadosDoSupabase()" ${sbOk?'':'disabled'} title="Restaura o snapshot mais recente salvo na nuvem">↩️ Restaurar da nuvem</button>
+          <button class="btn btn-secondary" onclick="sincronizarSupabaseAgora()" ${sbOk?'':'disabled'} title="Envia imediatamente os dados atuais para a nuvem">🔄 Sincronizar agora</button>
+          <button class="btn btn-secondary" onclick="sincronizarSupabaseBidirecionalAgora()" ${sbOk?'':'disabled'} title="Checa a nuvem, restaura se for seguro e envia os dados atuais">🔁 Sync bidirecional</button>
+          <button class="btn btn-secondary" onclick="sincronizarTabelasReaisSupabase()" ${sbOk?'':'disabled'} title="Envia registros individualmente para tabelas reais usando local_id">🧩 Enviar tabelas reais</button>
+          <button class="btn btn-secondary" onclick="restaurarTabelasReaisSupabase()" ${sbOk?'':'disabled'} title="Baixa registros das tabelas reais e mescla por updatedAt">🧬 Restaurar tabelas reais</button>
+          <button class="btn btn-ghost" onclick="copiarSupabaseSnapshotSQL()" title="Copia o SQL mínimo para criar a tabela app_snapshots">📋 Copiar SQL app_snapshots</button>
           <button class="btn btn-ghost" onclick="document.getElementById('sbAnonKey').type=document.getElementById('sbAnonKey').type==='password'?'text':'password'">👁️ Ver chave</button>
         </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 mb-2">
+          <label class="inline-flex items-center gap-2 font-semibold text-slate-800">
+            <input type="checkbox" ${isSupabaseAutoSyncEnabled()?'checked':''} onchange="setSupabaseAutoSyncEnabled(this.checked)">
+            Sincronizar automaticamente após novos cadastros/alterações
+          </label>
+          <div class="mt-1">${supabaseAutoSyncStatusLabel()}</div>
+          <label class="inline-flex items-center gap-2 font-semibold text-slate-800 mt-2">
+            <input type="checkbox" ${isSupabaseAutoPullEnabled()?'checked':''} onchange="setSupabaseAutoPullEnabled(this.checked)">
+            Restaurar automaticamente da nuvem quando for seguro
+          </label>
+          <div class="mt-1">${supabaseAutoPullStatusLabel()}</div>
+          ${supabaseCloudStatusHTML()}
+        </div>
         <div class="bg-blue-50 border-l-4 border-blue-400 p-2 text-xs text-slate-700">
-          <b>Status atual (Fase 1):</b> credenciais armazenadas localmente, ainda sem sincronização. Próxima fase migra dados/login para o Supabase.
+          <b>Status atual:</b> credenciais armazenadas localmente. A migração envia/restaura um snapshot completo em <code>app_snapshots</code>, preservando IDs e vínculos do sistema local.<br>
+          <span>${supabaseSnapshotStatusLabel()}</span><br>
+          <span>${supabaseRealTablesStatusLabel()}</span>
         </div>
       </div>
       <div class="card">
@@ -18338,26 +18385,492 @@ function resetBranding(){
 }
 function resetSystem(){
   if(!confirm('Tem certeza? TODOS os dados serão apagados.')) return;
-  if(!confirm('Esta ação é IRREVERSÍVEL. Confirma?')) return;
+  const typed = prompt('Esta ação é IRREVERSÍVEL.\n\nDigite APAGAR para confirmar a exclusão total dos dados:');
+  if((typed||'').trim().toUpperCase() !== 'APAGAR'){
+    toast('Operação cancelada','warn');
+    return;
+  }
+  createSafetySnapshot('antes de apagar tudo');
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem('jms_last_user_v1');
+  try{ sessionStorage.removeItem('jms_session_v1'); }catch(e){}
   location.reload();
 }
 
 /* =====================================================
    EXPORTAÇÕES
    ===================================================== */
+function backupFileName(){
+  const stamp = new Date().toISOString().slice(0,19).replace(/[-:T]/g,'');
+  const org = ((DB.org && DB.org.name) || 'gestao360')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/gi,'-')
+    .replace(/^-+|-+$/g,'')
+    .toLowerCase() || 'gestao360';
+  return org+'-backup-'+stamp+'.json';
+}
+
+function buildBackupPayload(){
+  const payload = JSON.parse(JSON.stringify(DB||{}));
+  const dataHash = backupDataHash(payload);
+  payload._backupMeta = {
+    app: 'JMS Gestão Empresarial',
+    version: '1.0',
+    generatedAt: new Date().toISOString(),
+    generatedBy: (currentUser && (currentUser.name || currentUser.email || currentUser.username)) || 'Sistema',
+    orgName: (DB.org && (DB.org.name || DB.org.groupName)) || '',
+    companies: Array.isArray(DB.companies) ? DB.companies.length : 0,
+    entries: Array.isArray(DB.entries) ? DB.entries.length : 0,
+    dataHash
+  };
+  return payload;
+}
+
+function simpleHash(str){
+  let h = 2166136261;
+  for(let i=0; i<str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h>>>0).toString(16).padStart(8,'0');
+}
+
+function backupDataHash(data){
+  const clean = backupDataForRestore(data);
+  return simpleHash(JSON.stringify(clean||{}));
+}
+
+function backupIntegrityText(data){
+  const m = data && data._backupMeta;
+  if(!m || !m.dataHash) return 'INTEGRIDADE\nBackup antigo: sem hash de verificação.';
+  const actual = backupDataHash(data);
+  const ok = actual === m.dataHash;
+  return 'INTEGRIDADE\n'+
+    (ok ? '✓ Arquivo confere com o hash salvo.' : '⚠ Hash diferente: o arquivo pode ter sido alterado ou corrompido.')+'\n'+
+    'Hash esperado: '+m.dataHash+'\n'+
+    'Hash calculado: '+actual;
+}
+
+function backupIntegrityOk(data){
+  const m = data && data._backupMeta;
+  if(!m || !m.dataHash) return true;
+  return backupDataHash(data) === m.dataHash;
+}
+
+function backupMetaText(data){
+  const m = data && data._backupMeta;
+  if(!m) return 'METADADOS DO ARQUIVO\nBackup antigo ou sem metadados.';
+  let generated = '—';
+  try{ generated = m.generatedAt ? new Date(m.generatedAt).toLocaleString('pt-BR') : '—'; }catch(_){}
+  return [
+    'METADADOS DO ARQUIVO',
+    'Sistema: '+(m.app||'—'),
+    'Versão: '+(m.version||'—'),
+    'Gerado em: '+generated,
+    'Gerado por: '+(m.generatedBy||'—'),
+    'Organização: '+(m.orgName||'—'),
+    'Hash: '+(m.dataHash||'—')
+  ].join('\n');
+}
+
+function backupDataForRestore(data){
+  const clean = Object.assign({}, data||{});
+  delete clean._backupMeta;
+  return clean;
+}
+
+function lastBackupLabel(){
+  try{
+    const raw = localStorage.getItem('jms_last_backup_at');
+    if(!raw) return 'Nenhum backup gerado nesta instalação.';
+    return 'Último backup gerado neste navegador: '+new Date(raw).toLocaleString('pt-BR');
+  }catch(_){
+    return 'Não foi possível ler o histórico local de backup.';
+  }
+}
+
+function safetySnapshotLabel(){
+  try{
+    const raw = localStorage.getItem('jms_safety_snapshot_meta');
+    if(!raw) return 'Nenhum snapshot de emergência criado ainda.';
+    const meta = JSON.parse(raw);
+    return 'Snapshot de emergência: '+new Date(meta.at).toLocaleString('pt-BR')+' ('+(meta.reason||'alteração crítica')+').';
+  }catch(_){
+    return 'Não foi possível ler o snapshot de emergência.';
+  }
+}
+
+function storageHealth(){
+  try{
+    const data = JSON.stringify(DB||{});
+    const bytes = new Blob([data]).size;
+    const mb = bytes / (1024*1024);
+    const attachments = [
+      ...(DB.attachments||[]),
+      ...(DB.documents||[]),
+      ...(DB.employeeDocs||[]),
+      ...(DB.contracts||[]).flatMap(c=>c.attachments||[]),
+      ...(DB.certidoes||[]).flatMap(c=>c.attachments||[])
+    ].filter(Boolean).length;
+    let status = 'Saudável';
+    let tone = 'green';
+    let tip = 'O volume atual está confortável para uso local.';
+    if(mb >= 4){
+      status = 'Atenção';
+      tone = 'amber';
+      tip = 'Os dados estão ficando grandes. Gere backup e considere remover anexos antigos ou migrar para nuvem.';
+    }
+    if(mb >= 8){
+      status = 'Crítico';
+      tone = 'red';
+      tip = 'O navegador pode recusar novos salvamentos. Faça backup imediatamente e reduza anexos/imagens.';
+    }
+    return { mb, attachments, status, tone, tip };
+  }catch(err){
+    return { mb:0, attachments:0, status:'Indisponível', tone:'amber', tip:'Não foi possível calcular o tamanho dos dados locais.' };
+  }
+}
+
+function storageHealthHTML(){
+  const h = storageHealth();
+  const colors = {
+    green: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+    amber: 'border-amber-200 bg-amber-50 text-amber-900',
+    red: 'border-red-200 bg-red-50 text-red-900'
+  };
+  return '<div class="grid md:grid-cols-3 gap-3 mb-3">'+
+    '<div class="rounded-lg border '+(colors[h.tone]||colors.amber)+' p-3">'+
+      '<div class="text-xs uppercase font-bold opacity-70">Armazenamento</div>'+
+      '<div class="text-lg font-bold">'+escapeHtml(h.status)+'</div>'+
+      '<div class="text-xs mt-1">'+escapeHtml(h.tip)+'</div>'+
+    '</div>'+
+    '<div class="rounded-lg border border-slate-200 bg-white p-3">'+
+      '<div class="text-xs uppercase font-bold text-slate-500">Tamanho dos dados</div>'+
+      '<div class="text-lg font-bold text-slate-800">'+h.mb.toFixed(2)+' MB</div>'+
+      '<div class="text-xs text-slate-500 mt-1">Estimativa do banco local salvo no navegador.</div>'+
+    '</div>'+
+    '<div class="rounded-lg border border-slate-200 bg-white p-3">'+
+      '<div class="text-xs uppercase font-bold text-slate-500">Anexos indexados</div>'+
+      '<div class="text-lg font-bold text-slate-800">'+h.attachments+'</div>'+
+      '<div class="text-xs text-slate-500 mt-1">Arquivos e imagens podem aumentar bastante o localStorage.</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function dataSummary(){
+  const arr = (name) => Array.isArray(DB && DB[name]) ? DB[name] : [];
+  return {
+    companies: arr('companies').length,
+    users: arr('users').length,
+    accounts: arr('accounts').length,
+    entries: arr('entries').length,
+    partners: arr('partners').length,
+    invoices: arr('invoices').length || arr('nf').length,
+    assets: arr('assets').length,
+    contracts: arr('contracts').length,
+    certidoes: arr('certidoes').length,
+    audit: arr('auditLog').length
+  };
+}
+
+function backupDataSummary(data){
+  const arr = (name) => Array.isArray(data && data[name]) ? data[name] : [];
+  return {
+    companies: arr('companies').length,
+    users: arr('users').length,
+    accounts: arr('accounts').length,
+    entries: arr('entries').length,
+    partners: arr('partners').length,
+    invoices: arr('invoices').length || arr('nf').length,
+    assets: arr('assets').length,
+    contracts: arr('contracts').length,
+    certidoes: arr('certidoes').length,
+    audit: arr('auditLog').length
+  };
+}
+
+function backupCompareText(incoming){
+  const current = dataSummary();
+  const next = backupDataSummary(incoming);
+  const line = (label, a, b) => label.padEnd(16,' ')+' atual: '+String(a).padStart(4,' ')+'  arquivo: '+String(b).padStart(4,' ');
+  return [
+    backupMetaText(incoming),
+    '',
+    backupIntegrityText(incoming),
+    '',
+    'COMPARAÇÃO DO BACKUP',
+    '',
+    line('Empresas', current.companies, next.companies),
+    line('Usuários', current.users, next.users),
+    line('Contas', current.accounts, next.accounts),
+    line('Lançamentos', current.entries, next.entries),
+    line('Cadastros', current.partners, next.partners),
+    line('Notas', current.invoices, next.invoices),
+    line('Bens', current.assets, next.assets),
+    line('Contratos', current.contracts, next.contracts),
+    line('Certidões', current.certidoes, next.certidoes),
+    line('Auditoria', current.audit, next.audit)
+  ].join('\n');
+}
+
+function dataSummaryHTML(){
+  const s = dataSummary();
+  const item = (label, value) =>
+    '<div class="rounded-lg border border-slate-200 bg-white p-3">'+
+      '<div class="text-xs uppercase font-bold text-slate-500">'+label+'</div>'+
+      '<div class="text-xl font-bold text-slate-800">'+value+'</div>'+
+    '</div>';
+  return '<div class="mb-3">'+
+    '<div class="font-semibold text-slate-800 mb-2">Resumo dos dados atuais</div>'+
+    '<div class="grid grid-cols-2 md:grid-cols-5 gap-3">'+
+      item('Empresas', s.companies)+
+      item('Usuários', s.users)+
+      item('Contas', s.accounts)+
+      item('Lançamentos', s.entries)+
+      item('Cadastros', s.partners)+
+      item('Notas', s.invoices)+
+      item('Bens', s.assets)+
+      item('Contratos', s.contracts)+
+      item('Certidões', s.certidoes)+
+      item('Auditoria', s.audit)+
+    '</div>'+
+  '</div>';
+}
+
+function systemHealthItems(){
+  const backupDays = backupAgeDays();
+  const storage = storageHealth();
+  const cache = tempCacheStats();
+  const users = Array.isArray(DB.users) ? DB.users : [];
+  const roleNorm = (typeof normalizeUserRole==='function') ? normalizeUserRole : (r => String(r||'').toLowerCase());
+  const hasMaster = users.some(u => roleNorm(u.role)==='master');
+  const supabaseOk = (typeof isSupabaseConfigured==='function') ? isSupabaseConfigured() : false;
+  const firebaseOk = (typeof isFirebaseConfigured==='function') ? isFirebaseConfigured() : false;
+  let hasSnapshot = false;
+  try{ hasSnapshot = !!localStorage.getItem('jms_safety_snapshot'); }catch(_){}
+  return [
+    {
+      label:'Backup recente',
+      ok: backupDays < 7,
+      warn: backupDays >= 7 && backupDays !== Infinity,
+      detail: backupDays === Infinity ? 'Nenhum backup registrado neste navegador.' : 'Último backup há '+backupDays+' dia(s).'
+    },
+    {
+      label:'Snapshot de emergência',
+      ok: hasSnapshot,
+      detail: safetySnapshotLabel()
+    },
+    {
+      label:'Armazenamento local',
+      ok: storage.tone === 'green',
+      warn: storage.tone === 'amber',
+      detail: storage.mb.toFixed(2)+' MB usados. '+storage.tip
+    },
+    {
+      label:'Caches temporários',
+      ok: cache.count === 0,
+      warn: cache.count > 0,
+      detail: tempCacheLabel()
+    },
+    {
+      label:'Usuário master',
+      ok: hasMaster,
+      detail: hasMaster ? 'Existe ao menos um administrador master.' : 'Nenhum usuário master detectado.'
+    },
+    {
+      label:'Backend em nuvem',
+      ok: supabaseOk || firebaseOk,
+      warn: false,
+      detail: supabaseOk
+        ? 'Supabase configurado; auto-sync '+(isSupabaseAutoSyncEnabled()?'ativo':'pausado')+'; restauração inteligente '+(isSupabaseAutoPullEnabled()?'ativa':'pausada')+'.'
+        : (firebaseOk ? 'Firebase configurado.' : 'Ainda usando dados locais do navegador.')
+    },
+    {
+      label:'Auditoria',
+      ok: Array.isArray(DB.auditLog),
+      warn: (typeof getCloudAuditQueue === 'function') && getCloudAuditQueue().length > 0,
+      detail: (Array.isArray(DB.auditLog)?DB.auditLog.length:0)+' evento(s) locais. '+((typeof cloudAuditStatusLabel === 'function') ? cloudAuditStatusLabel() : '')
+    }
+  ];
+}
+
+function systemHealthHTML(){
+  const items = systemHealthItems();
+  const okCount = items.filter(i=>i.ok).length;
+  const warnCount = items.filter(i=>i.warn).length;
+  const criticalCount = items.length - okCount - warnCount;
+  const row = (i) => {
+    const icon = i.ok ? '✓' : (i.warn ? '!' : '×');
+    const cls = i.ok
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+      : (i.warn ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-red-200 bg-red-50 text-red-900');
+    return '<div class="rounded-lg border '+cls+' p-3">'+
+      '<div class="flex items-center gap-2">'+
+        '<span class="font-bold">'+icon+'</span>'+
+        '<div class="font-semibold">'+escapeHtml(i.label)+'</div>'+
+      '</div>'+
+      '<div class="text-xs mt-1">'+escapeHtml(i.detail||'')+'</div>'+
+    '</div>';
+  };
+  return '<div class="mb-3">'+
+    '<div class="flex items-center justify-between gap-2 flex-wrap mb-2">'+
+      '<div class="font-semibold text-slate-800">Saúde do sistema</div>'+
+      '<div class="text-xs text-slate-500">'+okCount+' OK • '+warnCount+' atenção • '+criticalCount+' pendente(s)</div>'+
+    '</div>'+
+    '<div class="grid md:grid-cols-2 gap-3">'+items.map(row).join('')+'</div>'+
+  '</div>';
+}
+
+function tempCacheStats(){
+  const prefixes = ['fipe_', 'br_fipe_'];
+  let count = 0;
+  let bytes = 0;
+  try{
+    for(let i=0; i<localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(!key || !prefixes.some(p=>key.startsWith(p))) continue;
+      count++;
+      bytes += new Blob([key, localStorage.getItem(key)||'']).size;
+    }
+  }catch(_){}
+  return { count, mb: bytes/(1024*1024) };
+}
+
+function tempCacheLabel(){
+  const s = tempCacheStats();
+  if(!s.count) return 'Nenhum cache temporário de consultas encontrado.';
+  return s.count+' item(ns) de cache temporário ocupando cerca de '+s.mb.toFixed(2)+' MB.';
+}
+
+function clearTempCaches(){
+  const prefixes = ['fipe_', 'br_fipe_'];
+  const keys = [];
+  try{
+    for(let i=0; i<localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(key && prefixes.some(p=>key.startsWith(p))) keys.push(key);
+    }
+    if(!keys.length){ toast('Nenhum cache temporário para limpar','warn'); return; }
+    if(!confirm('Limpar '+keys.length+' item(ns) de cache temporário?\n\nIsso não apaga empresas, usuários, lançamentos, backups ou configurações.')) return;
+    keys.forEach(k=>localStorage.removeItem(k));
+    _auditLog('clear_temp_caches','Sistema','Caches temporários limpos: '+keys.length+' item(ns)');
+    toast('Caches temporários limpos');
+    if(typeof setConfigTab==='function') setConfigTab('backup');
+    else if(typeof navigate==='function') navigate('config');
+  }catch(err){
+    console.error(err);
+    alert('Falha ao limpar caches temporários: '+err.message);
+  }
+}
+
+function createSafetySnapshot(reason){
+  try{
+    const payload = JSON.stringify(DB);
+    localStorage.setItem('jms_safety_snapshot', payload);
+    localStorage.setItem('jms_safety_snapshot_meta', JSON.stringify({
+      at: new Date().toISOString(),
+      reason: reason || 'alteração crítica',
+      org: (DB.org && DB.org.name) || ''
+    }));
+    return true;
+  }catch(err){
+    console.warn('Falha ao criar snapshot de emergência:', err);
+    return false;
+  }
+}
+
+function restoreSafetySnapshot(){
+  try{
+    const raw = localStorage.getItem('jms_safety_snapshot');
+    if(!raw){ toast('Nenhum snapshot de emergência encontrado','warn'); return; }
+    const data = JSON.parse(raw);
+    if(!confirm('Restaurar o último snapshot de emergência?\n\nIsso substitui os dados atuais.')) return;
+    DB = Object.assign(JSON.parse(JSON.stringify(defaultDB)), data);
+    _auditLog('restore_safety_snapshot','Sistema','Snapshot de emergência restaurado');
+    saveDB();
+    try { if(typeof refreshOrgName==='function') refreshOrgName(); } catch(_){}
+    try { if(typeof refreshGlobalFilters==='function') refreshGlobalFilters(); } catch(_){}
+    try { if(typeof navigate==='function') navigate('dashboard'); } catch(_){}
+    toast('Snapshot de emergência restaurado');
+  }catch(err){
+    console.error(err);
+    alert('Falha ao restaurar snapshot de emergência: '+err.message);
+  }
+}
+
+function backupAgeDays(){
+  try{
+    const raw = localStorage.getItem('jms_last_backup_at');
+    if(!raw) return Infinity;
+    const diff = Date.now() - new Date(raw).getTime();
+    if(!isFinite(diff) || diff < 0) return Infinity;
+    return Math.floor(diff / 86400000);
+  }catch(_){
+    return Infinity;
+  }
+}
+
+function snoozeBackupReminder(days){
+  const d = Math.max(1, Number(days||1));
+  try{
+    localStorage.setItem('jms_backup_reminder_snooze_until', new Date(Date.now()+d*86400000).toISOString());
+  }catch(_){}
+}
+
+function shouldShowBackupReminder(){
+  try{
+    if(sessionStorage.getItem('jms_backup_reminder_seen')) return false;
+    if(!DB || !DB.org || !DB.org.createdAt || !(DB.companies||[]).length) return false;
+    const snooze = localStorage.getItem('jms_backup_reminder_snooze_until');
+    if(snooze && new Date(snooze).getTime() > Date.now()) return false;
+    return backupAgeDays() >= 7;
+  }catch(_){
+    return false;
+  }
+}
+
+function maybeShowBackupReminder(){
+  if(!shouldShowBackupReminder()) return;
+  try{ sessionStorage.setItem('jms_backup_reminder_seen','1'); }catch(_){}
+  const age = backupAgeDays();
+  const last = isFinite(age) ? ('Seu último backup foi há '+age+' dia(s).') : 'Nenhum backup foi registrado neste navegador.';
+  setTimeout(()=>{
+    openModal('Backup recomendado',
+      '<div class="space-y-3">'+
+        '<div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">'+
+          '<strong>Proteja seus dados.</strong><br>'+escapeHtml(last)+' Como os dados ainda ficam neste navegador, é recomendável gerar um backup JSON agora.'+
+        '</div>'+
+        '<div class="flex gap-2 flex-wrap">'+
+          '<button class="btn btn-primary" onclick="exportBackup();closeModal()">💾 Gerar backup agora</button>'+
+          '<button class="btn btn-secondary" onclick="snoozeBackupReminder(1);closeModal();toast(&quot;Lembrete adiado para amanhã&quot;,&quot;warn&quot;)">Lembrar amanhã</button>'+
+          '<button class="btn btn-ghost" onclick="closeModal();navigate(&quot;config&quot;);if(typeof setConfigTab===&quot;function&quot;)setConfigTab(&quot;backup&quot;)">Abrir tela de backup</button>'+
+        '</div>'+
+      '</div>',
+      null,
+      'lg'
+    );
+    setTimeout(()=>{ const b=document.getElementById('modalSaveBtn'); if(b) b.style.display='none'; }, 20);
+  }, 900);
+}
+
 function exportBackup(){
-  const data = JSON.stringify(DB,null,2);
+  const health = storageHealth();
+  _auditLog('export_backup','Sistema','Backup JSON exportado; tamanho local '+health.mb.toFixed(2)+' MB; anexos '+health.attachments);
+  saveDB();
+  const data = JSON.stringify(buildBackupPayload(),null,2);
   const blob = new Blob([data],{type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href=url; a.download='gestao360-backup-'+todayISO()+'.json'; a.click();
+  a.href=url; a.download=backupFileName(); a.click();
   URL.revokeObjectURL(url);
-  toast('Backup gerado');
+  try{ localStorage.setItem('jms_last_backup_at', new Date().toISOString()); }catch(_){}
+  toast('Backup JSON gerado com data e hora');
 }
 function importBackup(ev){
   const f = ev.target.files[0]; if(!f) return;
   const r = new FileReader();
+  const inputEl = ev.target;
   r.onload = e=>{
     try{
       const data = JSON.parse(e.target.result);
@@ -18366,15 +18879,13 @@ function importBackup(ev){
         (data.org || data.users || Array.isArray(data.companies) || Array.isArray(data.entries) || Array.isArray(data.accounts));
       if(!looksLikeBackup) throw new Error('Estrutura JSON inválida — não parece ser um backup do sistema');
       const summary =
-        '📊 RESUMO DO BACKUP:\n'+
-        '• Empresas: '+(Array.isArray(data.companies)?data.companies.length:0)+'\n'+
-        '• Lançamentos: '+(Array.isArray(data.entries)?data.entries.length:0)+'\n'+
-        '• Contas bancárias: '+(Array.isArray(data.accounts)?data.accounts.length:0)+'\n'+
-        '• Bens: '+(Array.isArray(data.assets)?data.assets.length:0)+'\n'+
-        '• Usuários: '+(Array.isArray(data.users)?data.users.length:0)+'\n\n'+
+        backupCompareText(data)+'\n\n'+
         '⚠️ Substituir TODOS os dados atuais por este backup?\n(Os dados atuais serão perdidos)';
+      if(!backupIntegrityOk(data) && !confirm('ATENÇÃO: o hash de integridade do backup não confere.\n\nO arquivo pode ter sido alterado ou corrompido. Deseja continuar mesmo assim?')) return;
       if(!confirm(summary)) return;
-      DB = Object.assign(JSON.parse(JSON.stringify(defaultDB)), data);
+      createSafetySnapshot('antes de importar backup');
+      DB = Object.assign(JSON.parse(JSON.stringify(defaultDB)), backupDataForRestore(data));
+      _auditLog('import_backup','Sistema','Backup JSON importado: '+(f.name||'arquivo sem nome'));
       saveDB();
       try { if(typeof refreshOrgName==='function') refreshOrgName(); } catch(_){}
       try { if(typeof refreshGlobalFilters==='function') refreshGlobalFilters(); } catch(_){}
@@ -18384,6 +18895,8 @@ function importBackup(ev){
       console.error(err);
       alert('Falha ao importar backup: '+err.message);
       toast('Arquivo inválido','err');
+    }finally{
+      if(inputEl) inputEl.value = '';
     }
   };
   r.readAsText(f);
@@ -18394,6 +18907,7 @@ function importBackup(ev){
 function restoreBackupFromFile(ev){
   const f = ev.target.files && ev.target.files[0];
   if(!f) return;
+  const inputEl = ev.target;
   const r = new FileReader();
   r.onload = e => {
     try {
@@ -18402,18 +18916,17 @@ function restoreBackupFromFile(ev){
         (data.org || data.users || Array.isArray(data.companies) || Array.isArray(data.entries) || Array.isArray(data.accounts));
       if(!looksLikeBackup) throw new Error('Não parece ser um backup válido (estrutura desconhecida)');
       const summary =
-        '📊 RESUMO DO BACKUP:\n'+
-        '• Empresas: '+(Array.isArray(data.companies)?data.companies.length:0)+'\n'+
-        '• Lançamentos: '+(Array.isArray(data.entries)?data.entries.length:0)+'\n'+
-        '• Contas bancárias: '+(Array.isArray(data.accounts)?data.accounts.length:0)+'\n'+
-        '• Bens: '+(Array.isArray(data.assets)?data.assets.length:0)+'\n'+
-        '• Usuários: '+(Array.isArray(data.users)?data.users.length:0)+'\n\n'+
+        backupCompareText(data)+'\n\n'+
         '⚠️ Restaurar este backup? TODOS os dados atuais (incluindo usuários cadastrados) serão substituídos.';
+      if(!backupIntegrityOk(data) && !confirm('ATENÇÃO: o hash de integridade do backup não confere.\n\nO arquivo pode ter sido alterado ou corrompido. Deseja continuar mesmo assim?')) return;
       if(!confirm(summary)) return;
+      createSafetySnapshot('antes de restaurar backup pela tela de login');
       // Mescla com defaultDB para garantir todos os campos esperados existam
-      const restored = Object.assign(JSON.parse(JSON.stringify(defaultDB)), data);
+      const restored = Object.assign(JSON.parse(JSON.stringify(defaultDB)), backupDataForRestore(data));
+      DB = restored;
+      _auditLog('restore_backup_login','Sistema','Backup restaurado pela tela de login: '+(f.name||'arquivo sem nome'));
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+        if(!safeLocalSetItem(STORAGE_KEY, JSON.stringify(DB))) return;
         // Limpa sessão antiga (o usuário pode não existir mais no novo banco)
         sessionStorage.removeItem(SESSION_KEY);
         localStorage.removeItem(LAST_USER_KEY);
@@ -18426,6 +18939,8 @@ function restoreBackupFromFile(ev){
     } catch(err){
       console.error(err);
       alert('Falha ao restaurar backup:\n\n'+err.message);
+    } finally {
+      if(inputEl) inputEl.value = '';
     }
   };
   r.onerror = () => alert('Erro ao ler o arquivo selecionado');
@@ -21307,7 +21822,8 @@ async function doRegisterSupabase(){
   const pwd2 = (document.getElementById('riPwd2')||{value:''}).value;
   if(!name || !email || !pwd){ toast('Preencha nome, email e senha','err'); return; }
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('E-mail inválido','err'); return; }
-  if(pwd.length < 6){ toast('Senha mínimo 6 caracteres (Supabase exige)','err'); return; }
+  const pwdErr = (typeof _validarSenhaForte === 'function') ? _validarSenhaForte(pwd) : (pwd.length < 8 ? 'Senha deve ter pelo menos 8 caracteres' : null);
+  if(pwdErr){ toast(pwdErr,'err'); return; }
   if(pwd !== pwd2){ toast('As senhas não conferem','err'); return; }
 
   const actionBtn = document.querySelector('#authActionWrap button');
@@ -21399,16 +21915,21 @@ async function logoutSupabase(){
   location.reload();
 }
 
+function ativarSupabaseAuthHandlers(){
+  if(!isSupabaseConfigured()) return false;
+  window.doRegister = doRegisterSupabase;
+  window.doLogin    = doLoginSupabase;
+  window.doQuickLogin = doLoginSupabase;
+  window.forgotPwd  = forgotPwdSupabase;
+  window.logout     = logoutSupabase;
+  return true;
+}
+
 /* Sobrescreve funções globais para usar Supabase quando configurado */
 (function _ativarSupabaseAuth(){
   // Substitui após DOMContentLoaded para garantir que originais existem
   function ativar(){
-    if(!isSupabaseConfigured()) return;
-    window.doRegister = doRegisterSupabase;
-    window.doLogin    = doLoginSupabase;
-    window.doQuickLogin = doLoginSupabase; // login rápido vira login normal
-    window.forgotPwd  = forgotPwdSupabase;
-    window.logout     = logoutSupabase;
+    ativarSupabaseAuthHandlers();
   }
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', ativar);
@@ -21854,21 +22375,24 @@ function showAuth(){
   document.getElementById('selectionScreen').classList.add('hidden');
   // Garante que a logo apareça na tela de login
   if(typeof injectBranding === 'function') { try { injectBranding(); } catch(e){} }
-  // Decide aba inicial: se não há usuário ainda, abre cadastro; senão, login
-  const tab = hasAnyUserWithPassword() ? 'login' : 'register';
+  // Supabase Auth não depende da lista local de usuários; sempre começa pelo login.
+  const tab = (typeof isSupabaseConfigured === 'function' && isSupabaseConfigured())
+    ? 'login'
+    : (hasAnyUserWithPassword() ? 'login' : 'register');
   authShowTab(tab);
 }
 
 function authShowTab(tab){
+  const supabaseAuth = (typeof isSupabaseConfigured === 'function' && isSupabaseConfigured());
   document.querySelectorAll('#authTabs .auth-tab2').forEach(t=>{
     t.classList.toggle('active', t.dataset.tab===tab);
   });
   const body = document.getElementById('authContent');
   const action = document.getElementById('authActionWrap');
   if(tab==='login'){
-    const noUsers = !hasAnyUserWithPassword();
+    const noUsers = !supabaseAuth && !hasAnyUserWithPassword();
     const lastUser = getLastUser();
-    if(lastUser && !noUsers){
+    if(lastUser && !noUsers && !supabaseAuth){
       // Quick login: mostra o usuário e pede só a senha
       const initials = (lastUser.name||'?').split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
       body.innerHTML = ''+
@@ -21900,7 +22424,7 @@ function authShowTab(tab){
       body.innerHTML = firstAccessBanner +
         '<div class="auth-input-row">'+
           '<div class="auth-input-icon">👤</div>'+
-          '<input id="liIdent" placeholder="E-mail ou nome de usuário" autocomplete="username">'+
+          '<input id="liIdent" placeholder="'+(supabaseAuth?'E-mail':'E-mail ou nome de usuário')+'" autocomplete="username">'+
         '</div>'+
         '<div class="auth-input-row">'+
           '<div class="auth-input-icon">🔒</div>'+
@@ -22079,20 +22603,62 @@ function switchUser(){
    Autenticação na nuvem com confirmação de e-mail
    ============================================================ */
 const FIREBASE_KEY = 'jms_firebase_config';
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyARl2LyvGsiYEhw8nQU8aIctUcOvOVtUe8',
+  authDomain: 'jms-gestao.firebaseapp.com',
+  projectId: 'jms-gestao',
+  storageBucket: 'jms-gestao.firebasestorage.app',
+  messagingSenderId: '154094649636',
+  appId: '1:154094649636:web:1e2821e0d5c065388133b1'
+};
 let _firebaseApp = null;
 let _firebaseAuth = null;
 
 function getFirebaseConfig(){
-  try { return JSON.parse(localStorage.getItem(FIREBASE_KEY)||'{}'); }
-  catch(e){ return {}; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(FIREBASE_KEY)||'{}');
+    const cfg = Object.assign({}, DEFAULT_FIREBASE_CONFIG);
+    Object.keys(saved||{}).forEach(k => { if(saved[k]) cfg[k] = saved[k]; });
+    return cfg;
+  }
+  catch(e){ return Object.assign({}, DEFAULT_FIREBASE_CONFIG); }
 }
 function saveFirebaseConfig(cfg){
   try { localStorage.setItem(FIREBASE_KEY, JSON.stringify(cfg||{})); return true; }
   catch(e){ return false; }
 }
+function ensureFirebaseDefaultsStored(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(FIREBASE_KEY)||'{}');
+    const cfg = Object.assign({}, saved||{});
+    let changed = false;
+    Object.keys(DEFAULT_FIREBASE_CONFIG).forEach(k => {
+      if(!cfg[k] && DEFAULT_FIREBASE_CONFIG[k]){
+        cfg[k] = DEFAULT_FIREBASE_CONFIG[k];
+        changed = true;
+      }
+    });
+    if(changed) saveFirebaseConfig(cfg);
+    return Object.assign({}, DEFAULT_FIREBASE_CONFIG, cfg);
+  } catch(e){
+    saveFirebaseConfig(DEFAULT_FIREBASE_CONFIG);
+    return Object.assign({}, DEFAULT_FIREBASE_CONFIG);
+  }
+}
 function isFirebaseConfigured(){
-  const c = getFirebaseConfig();
+  const c = ensureFirebaseDefaultsStored();
   return !!(c.apiKey && c.projectId);
+}
+
+function autoInitFirebase(){
+  const cfg = ensureFirebaseDefaultsStored();
+  if(!(cfg.apiKey && cfg.projectId)) return false;
+  const ok = _initFirebase();
+  try {
+    const link = document.getElementById('authFirebaseSetupLink');
+    if(link) link.style.display = ok ? 'none' : 'block';
+  } catch(e){}
+  return ok;
 }
 
 function _initFirebase(){
@@ -22247,6 +22813,8 @@ async function loginComGoogle(){
       'auth/popup-blocked': 'Popup bloqueado pelo navegador. Permita popups para este site.',
       'auth/cancelled-popup-request': 'Login cancelado',
       'auth/network-request-failed': 'Falha de conexão. Verifique sua internet.',
+      'auth/operation-not-allowed': 'Login Google não habilitado no Firebase. Ative em Authentication → Sign-in method → Google.',
+      'auth/configuration-not-found': 'Firebase Authentication ainda não está habilitado neste projeto.',
       'auth/unauthorized-domain': 'Domínio não autorizado no Firebase. Adicione '+location.hostname+' em Authentication → Settings → Authorized domains.'
     };
     toast(errMsgs[e.code] || ('Falha: '+(e.message||e)), 'err');
@@ -22270,6 +22838,10 @@ function showFirebaseSetup(){
       '3. Adicione app Web (ícone <code>&lt;/&gt;</code>) e copie o objeto <code>firebaseConfig</code><br>'+
       '4. Cole abaixo (pode colar o objeto inteiro ou preencher campo a campo)'+
     '</div>'+
+    '<div style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155;padding:.75rem;border-radius:8px;margin-bottom:1rem;font-size:.85rem">'+
+      '<strong>Projeto detectado:</strong> jms-gestao<br>'+
+      'Os campos do projeto já foram preenchidos. Falta apenas a <strong>API Key</strong> do app Web no Firebase.'+
+    '</div>'+
     '<div class="mb-3"><label class="label">Colar objeto firebaseConfig (mais fácil)</label>'+
       '<textarea id="fbConfigPaste" class="input" rows="6" placeholder="Cole aqui o bloco firebaseConfig que copiou do Firebase console"></textarea>'+
       '<div class="text-xs text-slate-500 mt-1">Cole o bloco inteiro do Firebase console — o sistema extrai os campos automaticamente</div>'+
@@ -22277,7 +22849,7 @@ function showFirebaseSetup(){
     '</div>'+
     '<hr style="margin:1rem 0;border:0;border-top:1px solid #e2e8f0">'+
     '<div class="grid-2 mb-3">'+
-      '<div><label class="label">API Key *</label><input id="fbApiKey" class="input" value="'+escapeHtml(cfg.apiKey||'')+'"></div>'+
+      '<div><label class="label">API Key *</label><input id="fbApiKey" class="input" placeholder="AIza..." value="'+escapeHtml(cfg.apiKey||'')+'"></div>'+
       '<div><label class="label">Project ID *</label><input id="fbProjectId" class="input" value="'+escapeHtml(cfg.projectId||'jms-gestao')+'"></div>'+
     '</div>'+
     '<div class="grid-2 mb-3">'+
@@ -22414,6 +22986,12 @@ function pularFirebase(){
 }
 
 function abrirFirebaseSetup(){ showFirebaseSetup(); }
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(autoInitFirebase, 300));
+} else {
+  setTimeout(autoInitFirebase, 300);
+}
 
 /* ============================================================
    APPWRITE AUTH — Cloud Free (Opção 1: só autenticação)
@@ -22726,7 +23304,9 @@ async function doLogin(){
         'auth/user-not-found': 'Usuário não cadastrado',
         'auth/too-many-requests': 'Muitas tentativas — tente novamente em alguns minutos',
         'auth/invalid-email': 'E-mail inválido',
-        'auth/user-disabled': 'Conta desativada'
+        'auth/user-disabled': 'Conta desativada',
+        'auth/operation-not-allowed': 'Login por e-mail/senha não habilitado no Firebase. Ative em Authentication → Sign-in method → Email/Password.',
+        'auth/configuration-not-found': 'Firebase Authentication ainda não está habilitado neste projeto.'
       };
       toast(errMsgs[e.code] || ('Falha no login: '+(e.message||e)),'err');
       return;
@@ -22793,11 +23373,49 @@ async function doLogin(){
    Documentação: https://supabase.com/docs
    ============================================================ */
 const SUPABASE_KEY = 'jms_supabase_config';
+const DEFAULT_SUPABASE_CONFIG = {
+  url: 'https://dxnoyvkvcwjfvttcnsay.supabase.co',
+  anonKey: 'sb_publishable_EmT2OBjaOt0lSjMA9Hixfw_qfBokZjz'
+};
+const SUPABASE_SNAPSHOT_SQL = `
+create table if not exists public.app_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  label text,
+  app_version text default '1.0',
+  data jsonb not null default '{}',
+  data_hash text,
+  metadata jsonb default '{}',
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_app_snapshots_owner_created
+  on public.app_snapshots(owner_id, created_at desc);
+
+alter table public.app_snapshots enable row level security;
+
+drop policy if exists "own_select" on public.app_snapshots;
+drop policy if exists "own_insert" on public.app_snapshots;
+drop policy if exists "own_update" on public.app_snapshots;
+drop policy if exists "own_delete" on public.app_snapshots;
+
+create policy "own_select" on public.app_snapshots
+  for select using (auth.uid() = owner_id);
+create policy "own_insert" on public.app_snapshots
+  for insert with check (auth.uid() = owner_id);
+create policy "own_update" on public.app_snapshots
+  for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+create policy "own_delete" on public.app_snapshots
+  for delete using (auth.uid() = owner_id);
+`.trim();
 let _supabaseClient = null;
 
 function getSupabaseConfig(){
-  try { return JSON.parse(localStorage.getItem(SUPABASE_KEY) || '{}'); }
-  catch(e) { return {}; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(SUPABASE_KEY) || '{}');
+    return Object.assign({}, DEFAULT_SUPABASE_CONFIG, saved);
+  }
+  catch(e) { return Object.assign({}, DEFAULT_SUPABASE_CONFIG); }
 }
 function saveSupabaseConfig(cfg){
   try { localStorage.setItem(SUPABASE_KEY, JSON.stringify(cfg||{})); return true; }
@@ -22833,8 +23451,808 @@ function saveSupabaseConfigFromUI(){
   }
   saveSupabaseConfig({ url: url.replace(/\/$/,''), anonKey: key });
   _supabaseClient = null; // força recriar
+  if(typeof ativarSupabaseAuthHandlers === 'function') ativarSupabaseAuthHandlers();
   if(typeof toast==='function') toast('Configuração Supabase salva','success');
   if(typeof navigate==='function') navigate('config');
+}
+
+function copiarSupabaseSnapshotSQL(){
+  const sql = SUPABASE_SNAPSHOT_SQL;
+  const done = () => toast('SQL copiado. Cole no Supabase SQL Editor e clique Run.','success');
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(sql).then(done).catch(()=>{ throw new Error('clipboard'); });
+      return;
+    }
+  }catch(_){}
+  prompt('Copie este SQL e rode no Supabase SQL Editor:', sql);
+}
+
+function supabaseSnapshotStatusLabel(){
+  try{
+    const raw = localStorage.getItem('jms_supabase_last_snapshot');
+    if(!raw) return 'Nenhum envio para nuvem registrado neste navegador.';
+    const meta = JSON.parse(raw);
+    return 'Último envio para nuvem: '+new Date(meta.createdAt||meta.at).toLocaleString('pt-BR')+
+      (meta.hash ? ' • hash '+meta.hash : '');
+  }catch(_){
+    return 'Não foi possível ler o status local da nuvem.';
+  }
+}
+
+const SUPABASE_AUTOSYNC_KEY = 'jms_supabase_autosync_enabled';
+const SUPABASE_AUTOPULL_KEY = 'jms_supabase_autopull_enabled';
+let _supabaseAutoSyncTimer = null;
+let _supabaseAutoSyncBusy = false;
+let _supabaseAutoSyncPendingReason = '';
+let _supabaseAutoPullBusy = false;
+let _suppressLocalDirtyMark = false;
+
+function currentDataHash(){
+  try{ return backupDataHash(buildBackupPayload()); }
+  catch(_){ return ''; }
+}
+
+function markLocalDataChanged(reason){
+  if(_suppressLocalDirtyMark) return;
+  try{
+    localStorage.setItem('jms_local_data_state', JSON.stringify({
+      at: new Date().toISOString(),
+      reason: reason || 'alteracao',
+      hash: currentDataHash()
+    }));
+  }catch(_){}
+}
+
+function getLocalDataState(){
+  try{ return JSON.parse(localStorage.getItem('jms_local_data_state')||'{}'); }
+  catch(_){ return {}; }
+}
+
+function getLastSupabaseSnapshotMeta(){
+  try{ return JSON.parse(localStorage.getItem('jms_supabase_last_snapshot')||'{}'); }
+  catch(_){ return {}; }
+}
+
+const CLOUD_AUDIT_QUEUE_KEY = 'jms_cloud_audit_queue';
+const CLOUD_AUDIT_ACTIONS = [
+  'login','logout','export_backup','import_backup','restore_backup_login',
+  'restore_safety_snapshot','supabase_push_snapshot','supabase_pull_snapshot',
+  'supabase_auto_pull','supabase_sync_conflict','clear_temp_caches'
+];
+
+function isCloudAuditAction(action){
+  return CLOUD_AUDIT_ACTIONS.includes(String(action||''));
+}
+
+function getCloudAuditQueue(){
+  try{ return JSON.parse(localStorage.getItem(CLOUD_AUDIT_QUEUE_KEY)||'[]'); }
+  catch(_){ return []; }
+}
+
+function setCloudAuditQueue(items){
+  try{ localStorage.setItem(CLOUD_AUDIT_QUEUE_KEY, JSON.stringify((items||[]).slice(-200))); }catch(_){}
+}
+
+function enqueueCloudAudit(event){
+  if(!event || !isCloudAuditAction(event.action)) return;
+  const q = getCloudAuditQueue();
+  q.push(Object.assign({}, event, { queuedAt: new Date().toISOString() }));
+  setCloudAuditQueue(q);
+  if(typeof flushCloudAuditQueue === 'function') flushCloudAuditQueue();
+}
+
+function cloudAuditStatusLabel(){
+  const q = getCloudAuditQueue();
+  if(!q.length) return 'Auditoria em nuvem: sem eventos pendentes.';
+  return 'Auditoria em nuvem: '+q.length+' evento(s) aguardando envio.';
+}
+
+async function flushCloudAuditQueue(){
+  if(window._cloudAuditFlushBusy || !isSupabaseConfigured()) return;
+  window._cloudAuditFlushBusy = true;
+  try{
+    const q = getCloudAuditQueue();
+    if(!q.length) return;
+    const { cli, user } = await requireSupabaseUser();
+    const rows = q.slice(0, 50).map(ev => ({
+      owner_id: user.id,
+      user_name: ev.user || 'Sistema',
+      action: ev.action || '',
+      description: ((ev.target ? ev.target+' — ' : '') + (ev.details || '')).slice(0, 2000),
+      metadata: {
+        localId: ev.id,
+        localUserId: ev.userId,
+        target: ev.target,
+        localAt: ev.at,
+        queuedAt: ev.queuedAt
+      },
+      created_at: ev.at || new Date().toISOString()
+    }));
+    const { error } = await cli.from('audit_log').insert(rows);
+    if(error) throw error;
+    setCloudAuditQueue(q.slice(rows.length));
+  }catch(err){
+    console.warn('Auditoria em nuvem pendente:', err);
+  }finally{
+    window._cloudAuditFlushBusy = false;
+  }
+}
+
+function isSupabaseAutoSyncEnabled(){
+  try{ return localStorage.getItem(SUPABASE_AUTOSYNC_KEY) !== '0'; }
+  catch(_){ return true; }
+}
+
+function setSupabaseAutoSyncEnabled(enabled){
+  try{ localStorage.setItem(SUPABASE_AUTOSYNC_KEY, enabled ? '1' : '0'); }catch(_){}
+  toast(enabled ? 'Sincronização automática ativada' : 'Sincronização automática pausada', enabled ? 'success' : 'warn');
+  if(enabled) scheduleSupabaseAutoSync('ativacao_manual');
+  if(typeof setConfigTab==='function') setConfigTab('integracoes');
+}
+
+function isSupabaseAutoPullEnabled(){
+  try{ return localStorage.getItem(SUPABASE_AUTOPULL_KEY) !== '0'; }
+  catch(_){ return true; }
+}
+
+function setSupabaseAutoPullEnabled(enabled){
+  try{ localStorage.setItem(SUPABASE_AUTOPULL_KEY, enabled ? '1' : '0'); }catch(_){}
+  toast(enabled ? 'Restauração automática inteligente ativada' : 'Restauração automática pausada', enabled ? 'success' : 'warn');
+  if(enabled) checkSupabaseRemoteSnapshot('ativacao_manual');
+  if(typeof setConfigTab==='function') setConfigTab('integracoes');
+}
+
+function supabaseAutoSyncStatusLabel(){
+  try{
+    const raw = localStorage.getItem('jms_supabase_autosync_status');
+    if(!raw) return isSupabaseAutoSyncEnabled() ? 'Aguardando primeira sincronização automática.' : 'Sincronização automática pausada.';
+    const s = JSON.parse(raw);
+    const when = s.at ? new Date(s.at).toLocaleString('pt-BR') : '—';
+    return (s.ok ? 'Último auto-sync OK: ' : 'Último auto-sync falhou: ')+when+(s.message ? ' • '+s.message : '');
+  }catch(_){
+    return 'Status de auto-sync indisponível.';
+  }
+}
+
+function supabaseCloudStatusHTML(){
+  const local = getLocalDataState();
+  const last = getLastSupabaseSnapshotMeta();
+  const localWhen = local.at ? new Date(local.at).toLocaleString('pt-BR') : 'sem alteração registrada';
+  const cloudWhen = last.createdAt ? new Date(last.createdAt).toLocaleString('pt-BR') : 'nenhum snapshot local conhecido';
+  const conflict = local.hash && last.hash && local.hash !== last.hash && local.at && last.createdAt && new Date(local.at) > new Date(last.createdAt);
+  return '<div class="grid-2 gap-2 mt-2">'+
+    '<div class="rounded border border-slate-200 bg-white p-2"><b>Local</b><br><span class="text-slate-600">Última alteração: '+escapeHtml(localWhen)+'</span><br><span class="text-slate-500">Hash: '+escapeHtml(local.hash||'—')+'</span></div>'+
+    '<div class="rounded border border-slate-200 bg-white p-2"><b>Nuvem</b><br><span class="text-slate-600">Último snapshot: '+escapeHtml(cloudWhen)+'</span><br><span class="text-slate-500">Hash: '+escapeHtml(last.hash||'—')+'</span></div>'+
+    (conflict ? '<div class="rounded border border-amber-300 bg-amber-50 p-2 text-amber-900" style="grid-column:1/-1"><b>Atenção:</b> há alterações locais ainda diferentes do último snapshot conhecido.</div>' : '')+
+  '</div>';
+}
+
+function setSupabaseAutoSyncStatus(ok, message){
+  try{
+    localStorage.setItem('jms_supabase_autosync_status', JSON.stringify({
+      ok: !!ok,
+      at: new Date().toISOString(),
+      message: message || ''
+    }));
+  }catch(_){}
+}
+
+function setSupabaseAutoPullStatus(ok, message){
+  try{
+    localStorage.setItem('jms_supabase_autopull_status', JSON.stringify({
+      ok: !!ok,
+      at: new Date().toISOString(),
+      message: message || ''
+    }));
+  }catch(_){}
+}
+
+function supabaseAutoPullStatusLabel(){
+  try{
+    const raw = localStorage.getItem('jms_supabase_autopull_status');
+    if(!raw) return isSupabaseAutoPullEnabled() ? 'Aguardando primeira checagem da nuvem.' : 'Restauração automática pausada.';
+    const s = JSON.parse(raw);
+    const when = s.at ? new Date(s.at).toLocaleString('pt-BR') : '—';
+    return (s.ok ? 'Última checagem da nuvem OK: ' : 'Última checagem falhou: ')+when+(s.message ? ' • '+s.message : '');
+  }catch(_){
+    return 'Status de checagem da nuvem indisponível.';
+  }
+}
+
+async function getLatestSupabaseSnapshot(){
+  const { cli } = await requireSupabaseUser();
+  const { data, error } = await cli.from('app_snapshots')
+    .select('id, created_at, data, data_hash, metadata')
+    .order('created_at', { ascending:false })
+    .limit(1)
+    .maybeSingle();
+  if(error) throw error;
+  return data || null;
+}
+
+function shouldAutoRestoreSupabaseSnapshot(remote){
+  if(!remote) return { action:'none', message:'nenhum snapshot remoto' };
+  const remoteHash = remote.data_hash || (remote.data && remote.data._backupMeta && remote.data._backupMeta.dataHash) || '';
+  const localHash = currentDataHash();
+  if(remoteHash && localHash && remoteHash === localHash) return { action:'same', message:'local e nuvem já iguais' };
+  const last = getLastSupabaseSnapshotMeta();
+  const local = getLocalDataState();
+  const lastAt = last.createdAt ? new Date(last.createdAt).getTime() : 0;
+  const localAt = local.at ? new Date(local.at).getTime() : 0;
+  const remoteAt = remote.created_at ? new Date(remote.created_at).getTime() : 0;
+  const localDirtyAfterLastCloud = localAt && (!lastAt || localAt > lastAt + 1500);
+  if(remoteAt > lastAt && !localDirtyAfterLastCloud) return { action:'restore', message:'snapshot remoto mais novo sem alterações locais pendentes' };
+  if(remoteAt > lastAt && localDirtyAfterLastCloud) return { action:'conflict', message:'nuvem e local mudaram depois do último sync' };
+  return { action:'none', message:'sem snapshot remoto mais novo' };
+}
+
+async function applySupabaseSnapshot(remote, reason){
+  const payload = remote && remote.data;
+  if(!payload) throw new Error('Snapshot remoto sem dados.');
+  if(!backupIntegrityOk(payload)) throw new Error('Snapshot remoto com hash de integridade divergente.');
+  createSafetySnapshot(reason || 'antes de aplicar snapshot Supabase');
+  _suppressLocalDirtyMark = true;
+  window._suppressCloudSync = true;
+  try{
+    DB = Object.assign(JSON.parse(JSON.stringify(defaultDB)), backupDataForRestore(payload));
+    _auditLog('supabase_auto_pull','Sistema','Snapshot aplicado automaticamente do Supabase; id '+remote.id);
+    saveDB();
+  }finally{
+    _suppressLocalDirtyMark = false;
+    window._suppressCloudSync = false;
+  }
+  localStorage.setItem('jms_supabase_last_snapshot', JSON.stringify({
+    id: remote.id,
+    createdAt: remote.created_at,
+    hash: remote.data_hash || (payload._backupMeta && payload._backupMeta.dataHash),
+    pulled: true
+  }));
+}
+
+async function checkSupabaseRemoteSnapshot(reason){
+  if(_supabaseAutoPullBusy || !isSupabaseConfigured() || !isSupabaseAutoPullEnabled()) return;
+  _supabaseAutoPullBusy = true;
+  try{
+    const remote = await getLatestSupabaseSnapshot();
+    const decision = shouldAutoRestoreSupabaseSnapshot(remote);
+    if(decision.action === 'restore'){
+      await applySupabaseSnapshot(remote, 'antes de sync bidirecional Supabase');
+      setSupabaseAutoPullStatus(true, 'restaurado da nuvem; '+decision.message);
+      try{ toast('Dados atualizados a partir da nuvem','success'); }catch(_){}
+      setTimeout(()=>location.reload(), 400);
+    }else if(decision.action === 'conflict'){
+      setSupabaseAutoPullStatus(false, decision.message);
+      if(typeof _auditLog === 'function') _auditLog('supabase_sync_conflict','Sistema',decision.message);
+      try{ toast('Conflito de sincronização: revise na aba Integrações','warn'); }catch(_){}
+    }else{
+      setSupabaseAutoPullStatus(true, decision.message);
+    }
+  }catch(err){
+    console.warn('Checagem Supabase falhou:', err);
+    setSupabaseAutoPullStatus(false, (err && err.message) || String(err));
+  }finally{
+    _supabaseAutoPullBusy = false;
+  }
+}
+
+async function sincronizarSupabaseBidirecionalAgora(){
+  if(!isSupabaseConfigured()){ alert('Supabase não configurado.'); return; }
+  try{
+    toast('Checando nuvem e enviando dados…');
+    await checkSupabaseRemoteSnapshot('sync_manual_bidirecional');
+    await pushSupabaseAutoSnapshot('sync_manual_bidirecional');
+    if(typeof setConfigTab==='function') setConfigTab('integracoes');
+  }catch(err){
+    alert('Falha no sync bidirecional:\n\n'+((err && err.message) || err));
+  }
+}
+
+function scheduleSupabaseAutoSync(reason){
+  if(!isSupabaseConfigured() || !isSupabaseAutoSyncEnabled()) return;
+  _supabaseAutoSyncPendingReason = reason || 'alteracao';
+  clearTimeout(_supabaseAutoSyncTimer);
+  _supabaseAutoSyncTimer = setTimeout(()=>pushSupabaseAutoSnapshot(_supabaseAutoSyncPendingReason), 8000);
+}
+
+async function pushSupabaseAutoSnapshot(reason){
+  if(_supabaseAutoSyncBusy) return;
+  if(!isSupabaseConfigured() || !isSupabaseAutoSyncEnabled()) return;
+  _supabaseAutoSyncBusy = true;
+  try{
+    const { cli, user } = await requireSupabaseUser();
+    const payload = buildBackupPayload();
+    const summary = dataSummary();
+    const { data, error } = await cli.from('app_snapshots').insert({
+      owner_id: user.id,
+      label: 'auto-sync',
+      app_version: (payload._backupMeta && payload._backupMeta.version) || '1.0',
+      data: payload,
+      data_hash: payload._backupMeta && payload._backupMeta.dataHash,
+      metadata: {
+        reason: reason || 'alteracao',
+        generatedBy: payload._backupMeta && payload._backupMeta.generatedBy,
+        orgName: payload._backupMeta && payload._backupMeta.orgName,
+        summary
+      }
+    }).select('id, created_at, data_hash').single();
+    if(error) throw error;
+    localStorage.setItem('jms_supabase_last_snapshot', JSON.stringify({
+      id: data.id,
+      createdAt: data.created_at,
+      hash: data.data_hash,
+      auto: true
+    }));
+    setSupabaseAutoSyncStatus(true, 'snapshot salvo; hash '+(data.data_hash||'—'));
+    try{ toast('Dados sincronizados na nuvem','success'); }catch(_){}
+  }catch(err){
+    console.warn('Auto-sync Supabase falhou:', err);
+    setSupabaseAutoSyncStatus(false, (err && err.message) || String(err));
+  }finally{
+    _supabaseAutoSyncBusy = false;
+  }
+}
+
+async function sincronizarSupabaseAgora(){
+  if(!isSupabaseConfigured()){ alert('Supabase não configurado.'); return; }
+  try{
+    toast('Sincronizando agora…');
+    await pushSupabaseAutoSnapshot('sync_manual');
+    if(typeof setConfigTab==='function') setConfigTab('integracoes');
+  }catch(err){
+    alert('Falha ao sincronizar:\n\n'+((err && err.message) || err));
+  }
+}
+
+async function requireSupabaseUser(){
+  const cli = getSupabaseClient();
+  if(!cli) throw new Error('Supabase não configurado ou SDK indisponível.');
+  const { data: { user }, error } = await cli.auth.getUser();
+  if(error) throw error;
+  if(!user) throw new Error('Faça login pelo Supabase antes de sincronizar dados.');
+  return { cli, user };
+}
+
+const SUPABASE_REAL_TABLE_COLLECTIONS = [
+  { key:'regions',        table:'regions',        label:'Regiões' },
+  { key:'companies',      table:'companies',      label:'Empresas' },
+  { key:'accounts',       table:'accounts',       label:'Contas' },
+  { key:'categories',     table:'categories',     label:'Categorias' },
+  { key:'costCenters',    table:'cost_centers',   label:'Centros de custo' },
+  { key:'partners',       table:'partners',       label:'Parceiros' },
+  { key:'entries',        table:'entries',        label:'Lançamentos' },
+  { key:'bids',           table:'bids',           label:'Licitações' },
+  { key:'contracts',      table:'contracts',      label:'Contratos' },
+  { key:'certifications', table:'certifications', label:'Certidões' },
+  { key:'assets',         table:'assets',         label:'Patrimônio' },
+  { key:'invoices',       table:'invoices',       label:'Notas fiscais' },
+  { key:'products',       table:'products',       label:'Produtos' }
+];
+
+const SUPABASE_REAL_TABLES_STATUS_KEY = 'jms_supabase_real_tables_status';
+
+function ensureRecordTimestamps(db){
+  const now = new Date().toISOString();
+  SUPABASE_REAL_TABLE_COLLECTIONS.forEach(cfg=>{
+    const list = db && Array.isArray(db[cfg.key]) ? db[cfg.key] : [];
+    list.forEach(item=>{
+      if(!item || typeof item !== 'object') return;
+      if(!item.createdAt) item.createdAt = now;
+      if(!item.updatedAt) item.updatedAt = item.createdAt || now;
+    });
+  });
+}
+
+function supabaseRealTablesStatusLabel(){
+  try{
+    const raw = localStorage.getItem(SUPABASE_REAL_TABLES_STATUS_KEY);
+    if(!raw) return 'Tabelas reais: aguardando primeira sincronização por registro.';
+    const s = JSON.parse(raw);
+    const when = s.at ? new Date(s.at).toLocaleString('pt-BR') : '—';
+    return (s.ok ? 'Tabelas reais OK: ' : 'Tabelas reais falharam: ')+when+(s.message ? ' • '+s.message : '');
+  }catch(_){
+    return 'Tabelas reais: status indisponível.';
+  }
+}
+
+function setSupabaseRealTablesStatus(ok, message){
+  try{
+    localStorage.setItem(SUPABASE_REAL_TABLES_STATUS_KEY, JSON.stringify({
+      ok: !!ok,
+      at: new Date().toISOString(),
+      message: message || ''
+    }));
+  }catch(_){}
+}
+
+function isoOrNow(value){
+  const d = value ? new Date(value) : null;
+  return d && !isNaN(d.getTime()) ? d.toISOString() : new Date().toISOString();
+}
+
+function pickFirst(obj, keys){
+  for(const k of keys){
+    if(obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+  }
+  return null;
+}
+
+function numberOrNull(v){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function dateOrNull(v){
+  if(!v) return null;
+  const s = String(v).slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+
+function buildSupabaseRecordRow(cfg, item, userId){
+  const raw = JSON.parse(JSON.stringify(item || {}));
+  const row = {
+    owner_id: userId,
+    local_id: String(item.id || uid('local')),
+    local_company_id: item.companyId || item.company_id || null,
+    local_updated_at: isoOrNow(item.updatedAt || item.updated_at || item.createdAt),
+    raw_data: raw
+  };
+  const createdAt = isoOrNow(item.createdAt || item.created_at || item.updatedAt);
+  if(cfg.table !== 'profiles') row.created_at = createdAt;
+  if('updatedAt' in item || 'updated_at' in item) row.updated_at = row.local_updated_at;
+
+  if(cfg.table === 'regions'){
+    Object.assign(row, { name:item.name || '', description:item.description || item.desc || null });
+  }else if(cfg.table === 'companies'){
+    Object.assign(row, {
+      name:item.name || item.razaoSocial || '',
+      cnpj:item.cnpj || null,
+      razao_social:item.razaoSocial || item.razao_social || null,
+      fantasia:item.fantasia || item.nomeFantasia || null,
+      inscricao_estadual:item.ie || item.inscricaoEstadual || null,
+      inscricao_municipal:item.im || item.inscricaoMunicipal || null,
+      address:item.address || item.endereco || null,
+      city:item.city || item.cidade || null,
+      state:item.state || item.uf || null,
+      cep:item.cep || null,
+      phone:item.phone || item.telefone || null,
+      email:item.email || null,
+      icon:item.icon || '🏢',
+      logo_url:item.logoUrl || null,
+      representante:item.representante || null,
+      config:item.config || {}
+    });
+  }else if(cfg.table === 'accounts'){
+    Object.assign(row, {
+      name:item.name || '',
+      bank:item.bank || item.banco || null,
+      agency:item.agency || item.agencia || null,
+      number:item.number || item.numero || null,
+      type:item.type || 'corrente',
+      initial_balance:numberOrNull(pickFirst(item, ['initialBalance','openingBalance','saldoInicial'])) || 0
+    });
+  }else if(cfg.table === 'categories'){
+    Object.assign(row, {
+      name:item.name || '',
+      type:item.type || 'despesa'
+    });
+  }else if(cfg.table === 'cost_centers'){
+    Object.assign(row, {
+      name:item.name || '',
+      description:item.description || item.descricao || null
+    });
+  }else if(cfg.table === 'partners'){
+    Object.assign(row, {
+      name:item.razaoSocial || item.nomeFantasia || item.name || '',
+      fantasy:item.nomeFantasia || item.fantasy || null,
+      document:item.cnpj || item.cpf || item.document || null,
+      type:Array.isArray(item.types) ? item.types.join(',') : (item.type || null),
+      email:item.email || null,
+      phone:item.phone || item.telefone || null,
+      address:item.address || item.endereco || null,
+      city:item.city || item.cidade || null,
+      state:item.state || item.uf || null,
+      cep:item.cep || null,
+      notes:item.notes || item.observacoes || null
+    });
+  }else if(cfg.table === 'entries'){
+    Object.assign(row, {
+      local_account_id:item.accountId || null,
+      local_category_id:item.categoryId || null,
+      local_partner_id:item.partnerId || null,
+      local_cost_center_id:item.costCenterId || null,
+      description:item.description || item.descricao || '',
+      type:item.type || 'despesa',
+      amount:numberOrNull(item.amount || item.valor) || 0,
+      date:dateOrNull(item.date) || new Date().toISOString().slice(0,10),
+      due_date:dateOrNull(item.dueDate || item.vencimento),
+      paid:!!item.paid,
+      paid_at:dateOrNull(item.paidAt || item.dataPagamento),
+      source:item.source || 'manual',
+      attachments:item.attachments || [],
+      metadata:item.metadata || {}
+    });
+  }else if(cfg.table === 'bids'){
+    Object.assign(row, {
+      numero:item.numero || item.number || null,
+      objeto:item.objeto || item.description || null,
+      orgao:item.orgao || null,
+      modalidade:item.modalidade || null,
+      categoria:item.categoria || null,
+      modo_disputa:item.modoDisputa || item.modo_disputa || null,
+      criterio:item.criterio || null,
+      fase:item.fase || null,
+      data_sessao:dateOrNull(item.dataSessao || item.data_sessao),
+      prazo_proposta:dateOrNull(item.prazoProposta || item.prazo_proposta),
+      valor_estimado:numberOrNull(item.valorEstimado || item.valor_estimado) || 0,
+      valor_proposta:numberOrNull(item.valorProposta || item.valor_proposta) || 0,
+      status:item.status || 'cadastrado',
+      documentos_exigidos:item.documentosExigidos || null,
+      drive_link:item.driveLink || item.drive_link || null,
+      observacoes:item.observacoes || null,
+      numero_controle_pncp:item.numeroControlePncp || null,
+      importado_pncp:!!item.importadoPncp
+    });
+  }else if(cfg.table === 'contracts'){
+    Object.assign(row, {
+      local_bid_id:item.bidId || null,
+      local_partner_id:item.partnerId || null,
+      numero:item.numero || null,
+      objeto:item.objeto || null,
+      orgao:item.orgao || null,
+      tipo:item.tipo || null,
+      data_inicio:dateOrNull(item.dataInicio || item.data_inicio),
+      data_fim:dateOrNull(item.dataFim || item.data_fim),
+      data_fim_original:dateOrNull(item.dataFimOriginal || item.data_fim_original),
+      valor_total:numberOrNull(item.valorTotal || item.valor_total) || 0,
+      valor_original:numberOrNull(item.valorOriginal || item.valor_original) || 0,
+      status:item.status || null,
+      garantia_exigida:!!item.garantiaExigida,
+      aditivos:item.aditivos || [],
+      notes:item.notes || item.observacoes || null
+    });
+  }else if(cfg.table === 'certifications'){
+    Object.assign(row, {
+      nome:item.nome || item.name || '',
+      tipo:item.tipo || null,
+      numero:item.numero || null,
+      orgao_emissor:item.orgaoEmissor || item.orgao_emissor || null,
+      emissao:dateOrNull(item.emissao),
+      validade:dateOrNull(item.validade),
+      drive_link:item.driveLink || item.drive_link || null,
+      anexo_url:item.anexoUrl || item.anexo_url || null,
+      arquivo_path:item.arquivoPath || null,
+      arquivo_meta:item.arquivoMeta || null,
+      observacoes:item.observacoes || null
+    });
+  }else if(cfg.table === 'assets'){
+    Object.assign(row, {
+      name:item.name || item.nome || '',
+      group_id:item.groupId || item.group_id || null,
+      type:item.type || item.tipo || null,
+      purchase_date:dateOrNull(item.purchaseDate || item.dataCompra),
+      purchase_value:numberOrNull(item.purchaseValue || item.valorCompra) || 0,
+      current_value:numberOrNull(item.currentValue || item.valorAtual) || 0,
+      status:item.status || 'ativo',
+      location:item.location || item.localizacao || null,
+      notes:item.notes || item.observacoes || null
+    });
+  }else if(cfg.table === 'invoices'){
+    Object.assign(row, {
+      number:item.number || item.numero || null,
+      type:item.type || item.tipo || null,
+      issue_date:dateOrNull(item.issueDate || item.emissao),
+      amount:numberOrNull(item.amount || item.valor) || 0,
+      status:item.status || null,
+      xml_url:item.xmlUrl || null,
+      pdf_url:item.pdfUrl || null,
+      metadata:item.metadata || {}
+    });
+  }else if(cfg.table === 'products'){
+    Object.assign(row, {
+      name:item.name || item.nome || '',
+      sku:item.sku || item.codigo || null,
+      description:item.description || item.descricao || null,
+      unit:item.unit || item.unidade || null,
+      price:numberOrNull(item.price || item.preco) || 0,
+      cost:numberOrNull(item.cost || item.custo) || 0,
+      stock:numberOrNull(item.stock || item.estoque) || 0,
+      min_stock:numberOrNull(item.minStock || item.estoqueMinimo) || 0,
+      active:item.active !== false
+    });
+  }
+  Object.keys(row).forEach(k=>{ if(row[k] === undefined) delete row[k]; });
+  return row;
+}
+
+function mergeRealTableRowIntoDB(cfg, row){
+  if(!row || !row.local_id) return { changed:false, conflict:false };
+  const list = Array.isArray(DB[cfg.key]) ? DB[cfg.key] : (DB[cfg.key] = []);
+  const incoming = Object.assign({}, row.raw_data || {});
+  incoming.id = incoming.id || row.local_id;
+  incoming.updatedAt = incoming.updatedAt || row.local_updated_at || row.updated_at || row.created_at || new Date().toISOString();
+  incoming.createdAt = incoming.createdAt || row.created_at || incoming.updatedAt;
+  const idx = list.findIndex(x=>String(x.id) === String(row.local_id));
+  if(idx < 0){
+    list.push(incoming);
+    return { changed:true, conflict:false };
+  }
+  const local = list[idx];
+  const localAt = new Date(local.updatedAt || local.createdAt || 0).getTime();
+  const remoteAt = new Date(incoming.updatedAt || incoming.createdAt || 0).getTime();
+  if(remoteAt > localAt + 1000){
+    list[idx] = Object.assign({}, local, incoming);
+    return { changed:true, conflict:false };
+  }
+  if(localAt > remoteAt + 1000){
+    return { changed:false, conflict:true };
+  }
+  return { changed:false, conflict:false };
+}
+
+async function pushSupabaseRealTableCollection(cli, user, cfg){
+  const list = Array.isArray(DB[cfg.key]) ? DB[cfg.key] : [];
+  if(!list.length) return { table:cfg.table, count:0 };
+  const rows = list.map(item=>buildSupabaseRecordRow(cfg, item, user.id));
+  const chunkSize = 200;
+  let count = 0;
+  for(let i=0; i<rows.length; i+=chunkSize){
+    const chunk = rows.slice(i, i+chunkSize);
+    const { error } = await cli.from(cfg.table).upsert(chunk, { onConflict:'owner_id,local_id' });
+    if(error) throw new Error(cfg.label+': '+error.message);
+    count += chunk.length;
+  }
+  return { table:cfg.table, count };
+}
+
+async function pullSupabaseRealTableCollection(cli, cfg){
+  const { data, error } = await cli.from(cfg.table)
+    .select('local_id, local_updated_at, raw_data, created_at, updated_at')
+    .not('local_id','is',null)
+    .order('local_updated_at', { ascending:true });
+  if(error) throw new Error(cfg.label+': '+error.message);
+  let changed = 0, conflicts = 0;
+  (data||[]).forEach(row=>{
+    const result = mergeRealTableRowIntoDB(cfg, row);
+    if(result.changed) changed++;
+    if(result.conflict) conflicts++;
+  });
+  return { table:cfg.table, count:(data||[]).length, changed, conflicts };
+}
+
+async function sincronizarTabelasReaisSupabase(){
+  if(!confirm('Enviar registros individualmente para as tabelas reais do Supabase?\n\nO snapshot completo continua sendo mantido como backup.')) return;
+  try{
+    const { cli, user } = await requireSupabaseUser();
+    ensureRecordTimestamps(DB);
+    safeLocalSetItem(STORAGE_KEY, JSON.stringify(DB));
+    if(typeof toast==='function') toast('Enviando registros para tabelas reais…');
+    const results = [];
+    for(const cfg of SUPABASE_REAL_TABLE_COLLECTIONS){
+      results.push(await pushSupabaseRealTableCollection(cli, user, cfg));
+    }
+    const total = results.reduce((sum,r)=>sum+r.count,0);
+    setSupabaseRealTablesStatus(true, total+' registro(s) enviados em '+results.length+' tabela(s)');
+    await pushSupabaseAutoSnapshot('sync_tabelas_reais');
+    alert('✅ Tabelas reais sincronizadas!\n\nRegistros enviados: '+total+'\n\nO snapshot de segurança também foi atualizado.');
+    if(typeof setConfigTab==='function') setConfigTab('integracoes');
+  }catch(err){
+    console.error('sincronizarTabelasReaisSupabase:', err);
+    setSupabaseRealTablesStatus(false, (err && err.message) || String(err));
+    alert('Falha ao sincronizar tabelas reais:\n\n'+((err && err.message) || err)+'\n\nRode o supabase-schema.sql atualizado antes de tentar novamente.');
+  }
+}
+
+async function restaurarTabelasReaisSupabase(){
+  if(!confirm('Restaurar/mesclar registros das tabelas reais do Supabase?\n\nRegistros remotos mais novos substituem os locais. Registros locais mais novos são preservados.')) return;
+  try{
+    const { cli } = await requireSupabaseUser();
+    createSafetySnapshot('antes de restaurar tabelas reais Supabase');
+    if(typeof toast==='function') toast('Baixando registros das tabelas reais…');
+    let total = 0, changed = 0, conflicts = 0;
+    for(const cfg of SUPABASE_REAL_TABLE_COLLECTIONS){
+      const result = await pullSupabaseRealTableCollection(cli, cfg);
+      total += result.count;
+      changed += result.changed;
+      conflicts += result.conflicts;
+    }
+    if(changed){
+      _suppressLocalDirtyMark = true;
+      window._suppressCloudSync = true;
+      try{ saveDB(); } finally { _suppressLocalDirtyMark = false; window._suppressCloudSync = false; }
+    }
+    setSupabaseRealTablesStatus(true, total+' remoto(s), '+changed+' mesclado(s), '+conflicts+' conflito(s) preservado(s)');
+    alert('✅ Restauração por tabelas concluída.\n\nRegistros remotos lidos: '+total+'\nRegistros locais atualizados: '+changed+'\nConflitos preservados localmente: '+conflicts+(changed?'\n\nA página será recarregada.':''));
+    if(changed) setTimeout(()=>location.reload(), 400);
+    else if(typeof setConfigTab==='function') setConfigTab('integracoes');
+  }catch(err){
+    console.error('restaurarTabelasReaisSupabase:', err);
+    setSupabaseRealTablesStatus(false, (err && err.message) || String(err));
+    alert('Falha ao restaurar tabelas reais:\n\n'+((err && err.message) || err));
+  }
+}
+
+async function migrarDadosParaSupabase(){
+  if(!confirm('Enviar o banco local atual para o Supabase?\n\nIsso cria um snapshot em nuvem e não apaga seus dados locais.')) return;
+  try{
+    const { cli, user } = await requireSupabaseUser();
+    const payload = buildBackupPayload();
+    const summary = dataSummary();
+    if(typeof toast==='function') toast('Enviando snapshot para Supabase…');
+    const { data, error } = await cli.from('app_snapshots').insert({
+      owner_id: user.id,
+      label: 'snapshot-manual',
+      app_version: (payload._backupMeta && payload._backupMeta.version) || '1.0',
+      data: payload,
+      data_hash: payload._backupMeta && payload._backupMeta.dataHash,
+      metadata: {
+        generatedBy: payload._backupMeta && payload._backupMeta.generatedBy,
+        orgName: payload._backupMeta && payload._backupMeta.orgName,
+        summary
+      }
+    }).select('id, created_at, data_hash').single();
+    if(error) throw error;
+    localStorage.setItem('jms_supabase_last_snapshot', JSON.stringify({
+      id: data.id,
+      createdAt: data.created_at,
+      hash: data.data_hash
+    }));
+    _auditLog('supabase_push_snapshot','Sistema','Snapshot enviado para Supabase; hash '+(data.data_hash||'—'));
+    _suppressLocalDirtyMark = true;
+    try{ saveDB(); } finally { _suppressLocalDirtyMark = false; }
+    alert('✅ Migração enviada para a nuvem!\n\nSnapshot salvo no Supabase em:\n'+new Date(data.created_at).toLocaleString('pt-BR')+'\n\nSe quiser, use "Restaurar da nuvem" em outro computador após login.');
+    if(typeof setConfigTab==='function') setConfigTab('integracoes');
+  }catch(err){
+    console.error('migrarDadosParaSupabase:', err);
+    alert('Falha ao migrar para Supabase:\n\n'+((err && err.message) || err)+'\n\nVerifique se:\n• você está logado via Supabase\n• rodou o supabase-schema.sql atualizado\n• a tabela app_snapshots existe');
+  }
+}
+
+async function restaurarDadosDoSupabase(){
+  try{
+    const { cli } = await requireSupabaseUser();
+    if(typeof toast==='function') toast('Buscando último snapshot na nuvem…');
+    const { data, error } = await cli.from('app_snapshots')
+      .select('id, created_at, data, data_hash, metadata')
+      .order('created_at', { ascending:false })
+      .limit(1)
+      .maybeSingle();
+    if(error) throw error;
+    if(!data){ alert('Nenhum snapshot encontrado no Supabase para este usuário.'); return; }
+    const payload = data.data || {};
+    const msg =
+      'Restaurar último snapshot da nuvem?\n\n'+
+      'Criado em: '+new Date(data.created_at).toLocaleString('pt-BR')+'\n'+
+      'Hash: '+(data.data_hash||'—')+'\n\n'+
+      backupCompareText(payload)+'\n\n'+
+      'Isso substituirá os dados locais atuais.';
+    if(!backupIntegrityOk(payload) && !confirm('ATENÇÃO: o snapshot da nuvem não confere com o hash salvo.\n\nDeseja continuar mesmo assim?')) return;
+    if(!confirm(msg)) return;
+    createSafetySnapshot('antes de restaurar snapshot Supabase');
+    _suppressLocalDirtyMark = true;
+    window._suppressCloudSync = true;
+    try{
+      DB = Object.assign(JSON.parse(JSON.stringify(defaultDB)), backupDataForRestore(payload));
+      _auditLog('supabase_pull_snapshot','Sistema','Snapshot restaurado do Supabase; id '+data.id);
+      saveDB();
+    }finally{
+      _suppressLocalDirtyMark = false;
+      window._suppressCloudSync = false;
+    }
+    localStorage.setItem('jms_supabase_last_snapshot', JSON.stringify({
+      id: data.id,
+      createdAt: data.created_at,
+      hash: data.data_hash || (payload._backupMeta && payload._backupMeta.dataHash),
+      pulled: true
+    }));
+    try { if(typeof refreshOrgName==='function') refreshOrgName(); } catch(_){}
+    try { if(typeof refreshGlobalFilters==='function') refreshGlobalFilters(); } catch(_){}
+    alert('✅ Dados restaurados da nuvem. A página será recarregada.');
+    setTimeout(()=>location.reload(), 400);
+  }catch(err){
+    console.error('restaurarDadosDoSupabase:', err);
+    alert('Falha ao restaurar da nuvem:\n\n'+((err && err.message) || err));
+  }
 }
 
 async function testarSupabase(){
@@ -22852,10 +24270,18 @@ async function testarSupabase(){
       }
       throw error;
     }
+    const snapCheck = await cli.from('app_snapshots').select('id').limit(1);
+    if(snapCheck.error){
+      if(String(snapCheck.error.code||'') === '42P01' || /relation .* does not exist/i.test(snapCheck.error.message||'')){
+        alert('✅ Conectou ao Supabase, mas a tabela "app_snapshots" NÃO foi criada.\n\nRode novamente o supabase-schema.sql atualizado no SQL Editor do Supabase.');
+        return;
+      }
+      throw snapCheck.error;
+    }
     // Verifica sessão de auth
     const { data: { user } } = await cli.auth.getUser();
     const userInfo = user ? ('\nUsuário autenticado: '+user.email) : '\n(Nenhum usuário autenticado ainda — normal na Fase 1)';
-    alert('✅ Conexão Supabase OK!\n\nProjeto respondendo, tabela "companies" existe.'+userInfo+'\n\nPróxima fase: migrar autenticação e dados.');
+    alert('✅ Conexão Supabase OK!\n\nProjeto respondendo, tabelas "companies" e "app_snapshots" existem.'+userInfo+'\n\nVocê já pode usar "Migrar dados locais".');
     if(typeof toast==='function') toast('✓ Supabase conectado','success');
   } catch(err){
     console.error('Supabase test error:', err);
@@ -22899,7 +24325,8 @@ async function doRegister(){
       const errMsgs = {
         'auth/invalid-email': 'E-mail inválido — verifique o formato (exemplo@dominio.com)',
         'auth/weak-password': 'Senha muito fraca — use ao menos 6 caracteres',
-        'auth/operation-not-allowed': 'Cadastro por e-mail não habilitado no Firebase',
+        'auth/operation-not-allowed': 'Cadastro por e-mail não habilitado no Firebase. Ative em Authentication → Sign-in method → Email/Password.',
+        'auth/configuration-not-found': 'Firebase Authentication ainda não está habilitado neste projeto.',
         'auth/too-many-requests': 'Muitas tentativas — aguarde alguns minutos'
       };
       toast(errMsgs[e.code] || ('Falha no cadastro: '+(e.message||e)),'err');
@@ -22993,6 +24420,10 @@ function postAuthInit(){
   if(!checkSetup()) return;
   refreshOrgName();
   refreshGlobalFilters();
+  if(typeof maybeShowBackupReminder === 'function') maybeShowBackupReminder();
+  if(typeof flushCloudAuditQueue === 'function') flushCloudAuditQueue();
+  if(typeof checkSupabaseRemoteSnapshot === 'function') checkSupabaseRemoteSnapshot('post_login');
+  if(typeof scheduleSupabaseAutoSync === 'function') scheduleSupabaseAutoSync('post_login');
   // Usuários com escopo restrito (Nível 1 ou Nível 2 com empresa atribuída):
   // entram direto na empresa configurada, sem passar pela seleção.
   if(currentUser && (isNivel1() || isNivel2()) && currentUser.assignedCompanyId){
@@ -24317,7 +25748,7 @@ function _enviarNotificacoesPendentes(){
 /* === LOG DE AUDITORIA === */
 function _auditLog(action, target, details){
   if(!DB.auditLog) DB.auditLog = [];
-  DB.auditLog.push({
+  const event = {
     id: uid('au'),
     at: new Date().toISOString(),
     user: (currentUser && currentUser.name) || 'Sistema',
@@ -24325,7 +25756,9 @@ function _auditLog(action, target, details){
     action: String(action||''),
     target: String(target||''),
     details: String(details||'')
-  });
+  };
+  DB.auditLog.push(event);
+  if(typeof enqueueCloudAudit === 'function') enqueueCloudAudit(event);
   // Limita a últimos 1000 eventos
   if(DB.auditLog.length > 1000){
     DB.auditLog = DB.auditLog.slice(-1000);
